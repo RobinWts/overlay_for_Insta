@@ -1,0 +1,32 @@
+{
+  "name": "overlay-image",
+  "version": "1.0.0",
+  "description": "Image overlay server for Instagram-style posts with title and source text",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20.3.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test-server.js",
+    "example": "node example-usage.js",
+    "docker:build": "docker build -t overlay-image .",
+    "docker:run": "docker run -p 8080:8080 overlay-image"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "sharp": "^0.33.3"
+  },
+  "keywords": [
+    "image",
+    "overlay",
+    "instagram",
+    "sharp",
+    "express"
+  ],
+  "author": "Robin Glave",
+  "license": "MIT"
+}
