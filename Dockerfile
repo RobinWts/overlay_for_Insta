@@ -27,7 +27,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/overlay?img=https://picsum.photos/300x300&title=test&source=test || exit 1
+    CMD curl -f http://localhost:8080/overlay?img=https://picsum.photos/300/300&title=test&source=test || exit 1
 
 # Start the application
 CMD ["node", "server.js"]
