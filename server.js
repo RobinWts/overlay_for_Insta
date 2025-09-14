@@ -30,11 +30,12 @@ const PORT = process.env.PORT || 8080;
  * 
  * @param {number} w - Width of the target image
  * @param {number} h - Height of the target image  
- * @param {string} rawTitle - The title text to overlay (max 140 chars)
- * @param {string} rawSource - The source attribution text (max 80 chars)
+ * @param {string} rawTitle - The title text to overlay (no character limit)
+ * @param {string} rawSource - The source attribution text (no character limit)
+ * @param {number} maxLines - Maximum number of lines for title text (default: 5)
  * @returns {string} SVG markup as a string
  */
-const makeSvg = (w, h, rawTitle, rawSource) => {
+const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
   /**
    * HTML entity escape function to prevent XSS and ensure proper XML rendering
    * Escapes common HTML/XML special characters that could break SVG parsing
@@ -66,8 +67,8 @@ const makeSvg = (w, h, rawTitle, rawSource) => {
   const topPad = Math.round(h * 0.08);         // Top padding (8% of image height)
   const sidePad = Math.round(w * 0.08);         // Side padding (8% of image width)
 
-  // Maximum number of lines for title text (prevents overflow)
-  const maxLines = 5;   // Increased from 4 to 5 for better text accommodation
+  // Use the provided maxLines parameter (prevents overflow)
+  // Default is 5, but can be customized via API parameter
 
   // === TEXT WRAPPING ALGORITHM ===
 
@@ -195,7 +196,15 @@ const makeSvg = (w, h, rawTitle, rawSource) => {
 /**
  * Main API endpoint for image overlay generation
  * 
- * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>
+ * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>
+ * 
+ * Parameters:
+ * - img (required): URL of the source image
+ * - title (optional): Text to overlay (no character limit, will wrap and truncate as needed)
+ * - source (optional): Source attribution text (no character limit)
+ * - w (optional): Output width in pixels (default: 1080)
+ * - h (optional): Output height in pixels (default: 1350)
+ * - maxLines (optional): Maximum number of lines for title text (default: 5)
  * 
  * Processes an image by:
  * 1. Fetching the source image from the provided URL
@@ -211,13 +220,27 @@ app.get('/overlay', async (req, res) => {
     const img = req.query.img;                 // Public URL of source image
     if (!img) return res.status(400).json({ error: 'img required' });
 
-    // Extract and limit text parameters to prevent abuse
-    const title = (req.query.title || '').slice(0, 140);    // Title text (max 140 chars)
-    const source = (req.query.source || '').slice(0, 80);   // Source text (max 80 chars)
+    // Extract text parameters (no character limits - will be handled by wrapping/truncation)
+    const title = req.query.title || '';       // Title text (no character limit)
+    const source = req.query.source || '';     // Source text (no character limit)
 
-    // Extract dimensions with sensible defaults (Instagram-style)
-    const W = Number(req.query.w || 1080);     // Width (default: 1080px)
-    const H = Number(req.query.h || 1350);     // Height (default: 1350px)
+    // Extract dimensions with Instagram-native defaults (optional parameters)
+    // Instagram's native post size is 1080x1350 (4:5 aspect ratio)
+    const W = Number(req.query.w || 1080);     // Width (optional, default: 1080px)
+    const H = Number(req.query.h || 1350);     // Height (optional, default: 1350px)
+
+    // Extract maxLines parameter with default of 5
+    const maxLines = Number(req.query.maxLines || 5);  // Max lines for title (optional, default: 5)
+
+    // Validate dimensions are reasonable (prevent abuse)
+    if (W < 100 || W > 4000 || H < 100 || H > 4000) {
+      return res.status(400).json({ error: 'Invalid dimensions. Width and height must be between 100 and 4000 pixels.' });
+    }
+
+    // Validate maxLines is reasonable
+    if (maxLines < 1 || maxLines > 20) {
+      return res.status(400).json({ error: 'Invalid maxLines. Must be between 1 and 20.' });
+    }
 
     // === IMAGE FETCHING ===
 
@@ -231,7 +254,7 @@ app.get('/overlay', async (req, res) => {
     // === OVERLAY GENERATION AND COMPOSITING ===
 
     // Generate SVG overlay with calculated text positioning
-    const svg = Buffer.from(makeSvg(W, H, title, source));
+    const svg = Buffer.from(makeSvg(W, H, title, source, maxLines));
 
     // Process image with Sharp:
     // 1. Resize to target dimensions (cover mode maintains aspect ratio)

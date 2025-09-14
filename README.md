@@ -6,7 +6,7 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 
 - 🖼️ **Image Overlay**: Add text overlays to any image with professional styling
 - 📱 **Instagram-Ready**: Optimized dimensions and styling for social media
-- 🎨 **Customizable Text**: Support for multi-line titles and source attribution
+- 🎨 **Customizable Text**: Support for unlimited-length titles and source attribution with smart wrapping
 - ⚡ **High Performance**: Built with Sharp for fast image processing
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
@@ -43,21 +43,38 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 The server provides a single endpoint for image overlay generation:
 
 ```
-GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>
+GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>
 ```
 
 #### Parameters
 
 - `img` (required): URL of the source image
-- `title` (optional): Text to overlay on the image (max 140 chars)
-- `source` (optional): Source attribution text (max 80 chars)
+- `title` (optional): Text to overlay on the image (unlimited length, will wrap and truncate as needed)
+- `source` (optional): Source attribution text (unlimited length)
 - `w` (optional): Output width (default: 1080)
 - `h` (optional): Output height (default: 1350)
+- `maxLines` (optional): Maximum number of lines for title text (default: 5, range: 1-20)
 
-#### Example
+#### Examples
 
+**Basic usage (uses all defaults):**
+```bash
+curl "http://localhost:8080/overlay?img=https://example.com/image.jpg" -o output.jpg
+```
+
+**With custom text and dimensions:**
 ```bash
 curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Awesome%20Post&source=@username&w=1080&h=1350" -o output.jpg
+```
+
+**With custom max lines:**
+```bash
+curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very%20long%20title%20text&maxLines=3" -o output.jpg
+```
+
+**Single line title:**
+```bash
+curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
 ```
 
 ## Development
@@ -106,10 +123,12 @@ The Dockerfile is optimized for production with:
 ## Text Overlay Features
 
 - **Smart Text Wrapping**: Automatically wraps long titles across multiple lines
+- **Unlimited Text Length**: No character limits - text wraps and truncates as needed
+- **Configurable Line Limits**: Control maximum number of lines (1-20, default: 5)
 - **Professional Styling**: Clean typography with proper contrast
 - **Responsive Sizing**: Text scales appropriately with image dimensions
 - **Ellipsis Handling**: Truncates text gracefully when needed
-- **Multi-line Support**: Up to 5 lines of title text
+- **Multi-line Support**: Flexible line count based on content and settings
 
 ## Requirements
 
