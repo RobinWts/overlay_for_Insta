@@ -196,7 +196,7 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
 /**
  * Main API endpoint for image overlay generation
  * 
- * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>
+ * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
  * 
  * Parameters:
  * - img (required): URL of the source image
@@ -205,12 +205,14 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
  * - w (optional): Output width in pixels (default: 1080)
  * - h (optional): Output height in pixels (default: 1350)
  * - maxLines (optional): Maximum number of lines for title text (default: 5)
+ * - logo (optional): Whether to overlay Logo.svg in bottom-left corner (default: false)
  * 
  * Processes an image by:
  * 1. Fetching the source image from the provided URL
  * 2. Generating an SVG overlay with the specified text
  * 3. Compositing the overlay onto the image
- * 4. Returning the final image as JPEG
+ * 4. Adding logo overlay if requested
+ * 5. Returning the final image as JPEG
  */
 app.get('/overlay', async (req, res) => {
   try {
@@ -231,6 +233,9 @@ app.get('/overlay', async (req, res) => {
 
     // Extract maxLines parameter with default of 5
     const maxLines = Number(req.query.maxLines || 5);  // Max lines for title (optional, default: 5)
+
+    // Extract logo parameter (boolean, default: false)
+    const logo = req.query.logo === 'true' || req.query.logo === '1';  // Logo overlay (optional, default: false)
 
     // Validate dimensions are reasonable (prevent abuse)
     if (W < 100 || W > 4000 || H < 100 || H > 4000) {
@@ -256,12 +261,49 @@ app.get('/overlay', async (req, res) => {
     // Generate SVG overlay with calculated text positioning
     const svg = Buffer.from(makeSvg(W, H, title, source, maxLines));
 
+    // Prepare composite operations array
+    const compositeOps = [{ input: svg, top: 0, left: 0 }];
+
+    // Add logo overlay if requested
+    if (logo) {
+      try {
+        // Read Logo.svg from the project root
+        const fs = await import('fs');
+        const logoPath = './Logo.svg';
+        const logoBuffer = fs.readFileSync(logoPath);
+
+        // Calculate logo position (bottom-left corner)
+        // Use logo as-is from SVG file with 20px padding from image border
+        const logoPadding = 20;
+
+        // Convert SVG to PNG without resizing (use original dimensions)
+        const logoPng = await sharp(logoBuffer)
+          .png()
+          .toBuffer();
+
+        // Get the actual dimensions of the logo
+        const logoMetadata = await sharp(logoPng).metadata();
+        const logoHeight = logoMetadata.height;
+        const logoWidth = logoMetadata.width;
+
+        // Add logo to composite operations (bottom-left corner)
+        compositeOps.push({
+          input: logoPng,
+          top: H - logoHeight - logoPadding,
+          left: logoPadding
+        });
+      } catch (logoError) {
+        // If logo file doesn't exist or can't be read, continue without logo
+        console.warn('Logo.svg not found or could not be read:', logoError.message);
+      }
+    }
+
     // Process image with Sharp:
     // 1. Resize to target dimensions (cover mode maintains aspect ratio)
-    // 2. Composite the SVG overlay on top
+    // 2. Composite the SVG overlay and logo on top
     // 3. Convert to JPEG with 88% quality (good balance of size/quality)
     const out = await sharp(buf).resize(W, H, { fit: 'cover' })
-      .composite([{ input: svg, top: 0, left: 0 }])
+      .composite(compositeOps)
       .jpeg({ quality: 88 })
       .toBuffer();
 
