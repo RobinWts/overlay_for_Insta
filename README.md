@@ -1,6 +1,6 @@
 # Overlay Image Server
 
-A Node.js server that creates Instagram-style image overlays with customizable title and source text. Perfect for social media content generation and automated image processing.
+A Node.js server that creates Instagram-style image overlays with customizable title and source text. Perfect for social media content generation and automated image processing. (e.g. n8n)
 
 ## Features
 
