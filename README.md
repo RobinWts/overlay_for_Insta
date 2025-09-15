@@ -7,6 +7,7 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 - 🖼️ **Image Overlay**: Add text overlays to any image with professional styling
 - 📱 **Instagram-Ready**: Optimized dimensions and styling for social media
 - 🎨 **Customizable Text**: Support for unlimited-length titles and source attribution with smart wrapping
+- 🏷️ **Logo Overlay**: Optional logo placement in bottom-left corner
 - ⚡ **High Performance**: Built with Sharp for fast image processing
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
@@ -43,7 +44,7 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 The server provides a single endpoint for image overlay generation:
 
 ```
-GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>
+GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
 ```
 
 #### Parameters
@@ -54,6 +55,7 @@ GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&
 - `w` (optional): Output width (default: 1080)
 - `h` (optional): Output height (default: 1350)
 - `maxLines` (optional): Maximum number of lines for title text (default: 5, range: 1-20)
+- `logo` (optional): Whether to overlay Logo.svg in bottom-left corner (default: false)
 
 #### Examples
 
@@ -77,6 +79,16 @@ curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very
 curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
 ```
 
+**With logo overlay:**
+```bash
+curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Post&logo=true" -o output.jpg
+```
+
+**Full customization:**
+```bash
+curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
+```
+
 ## Development
 
 ### Available Scripts
@@ -93,6 +105,7 @@ curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Shor
 overlay_for_Insta/
 ├── server.js          # Main server application
 ├── test-server.js     # Test suite
+├── Logo.svg           # Logo file for overlay (optional)
 ├── package.json       # Dependencies and scripts
 ├── Dockerfile         # Container configuration
 ├── .nvmrc            # Node.js version specification
@@ -129,6 +142,18 @@ The Dockerfile is optimized for production with:
 - **Responsive Sizing**: Text scales appropriately with image dimensions
 - **Ellipsis Handling**: Truncates text gracefully when needed
 - **Multi-line Support**: Flexible line count based on content and settings
+- **Logo Branding**: Optional logo overlay in bottom-left corner with automatic sizing
+
+## Logo File
+
+The server supports an optional logo overlay by placing a `Logo.svg` file in the project root. When the `logo=true` parameter is used, this file will be automatically:
+
+- Used at its original size (no resizing)
+- Positioned in the bottom-left corner with 20px padding from the image border
+- Converted to PNG format for optimal compositing
+- Sized by adjusting the SVG file itself
+
+If the `Logo.svg` file is not found, the server will continue processing without the logo and log a warning.
 
 ## Requirements
 

@@ -1,10 +1,57 @@
 # Development History
 
-## 2025-09-14 - Enhanced Text Handling and API Flexibility
+## 2025-09-15 - Comprehensive Console Logging and Monitoring
+
+### Major Improvements
+- **Request Tracking**: Added unique request IDs for tracking individual requests
+- **Performance Monitoring**: Detailed timing information for each processing step
+- **Progress Logging**: Step-by-step console output showing processing progress
+- **Error Tracking**: Enhanced error logging with request context
+- **Startup Information**: Comprehensive server startup information display
+
+### Technical Changes
+1. **Request ID System**:
+   - Generated unique 9-character request IDs for each request
+   - All log messages include request ID for easy tracking
+   - Enables monitoring multiple concurrent requests
+
+2. **Performance Metrics**:
+   - Image fetch timing (network performance)
+   - SVG generation timing (text processing performance)
+   - Logo processing timing (file I/O performance)
+   - Sharp processing timing (image manipulation performance)
+   - Total request timing (end-to-end performance)
+
+3. **Detailed Logging**:
+   - Parameter validation logging with sanitized values
+   - Image fetch status and size information
+   - Logo processing details (dimensions, file size)
+   - Composite operations count
+   - Final output size and processing time
+
+4. **Enhanced Startup**:
+   - Professional startup banner
+   - API endpoint information
+   - Usage examples
+   - Monitoring status indication
+
+### Benefits
+- **Debugging**: Easy to track down issues with specific requests
+- **Performance**: Identify bottlenecks in the processing pipeline
+- **Monitoring**: Real-time visibility into server operations
+- **Development**: Better understanding of request flow and timing
+- **Production**: Professional logging for production monitoring
+
+### Files Modified
+- `server.js` - Added comprehensive logging throughout
+- `notes/history.md` - This file
+
+## 2025-09-14 - Enhanced Text Handling and Logo Overlay Feature
 
 ### Major Improvements
 - **Removed Character Limits**: Eliminated arbitrary 140-character limit for titles and 80-character limit for source text
 - **Added maxLines Parameter**: New optional parameter to control maximum number of lines for title text (default: 5, range: 1-20)
+- **Added Logo Overlay**: New optional boolean parameter to overlay Logo.svg in bottom-left corner (default: false)
 - **Enhanced Text Wrapping**: Improved text wrapping algorithm to handle unlimited text length with smart truncation
 - **Better API Documentation**: Updated all documentation to reflect new parameter structure and capabilities
 
@@ -12,6 +59,7 @@
 1. **API Parameters**:
    - Removed character limits from `title` and `source` parameters
    - Added `maxLines` parameter with validation (1-20 range)
+   - Added `logo` boolean parameter for logo overlay
    - Updated parameter extraction and validation logic
 
 2. **makeSvg Function**:
@@ -19,25 +67,36 @@
    - Updated JSDoc documentation
    - Removed hardcoded maxLines value
 
-3. **Text Processing**:
+3. **Logo Overlay System**:
+   - Added logo file reading and processing logic
+   - Uses logo at original size (no resizing - adjust SVG file for sizing)
+   - Added bottom-left positioning with 20px padding from image border
+   - Graceful error handling when logo file is missing
+   - Logo conversion to PNG for optimal compositing
+
+4. **Text Processing**:
    - Enhanced text wrapping algorithm to work with unlimited text
    - Improved ellipsis handling for better user experience
    - Better validation and error handling
 
-4. **Documentation Updates**:
+5. **Documentation Updates**:
    - Updated README.md with new parameter information
-   - Added multiple usage examples
+   - Added multiple usage examples including logo overlay
    - Enhanced feature descriptions
+   - Added logo file requirements section
 
 ### Benefits
 - **More Flexible**: Users can now use any length of text
 - **Better Control**: maxLines parameter allows fine-tuning of text layout
+- **Brand Consistency**: Logo overlay ensures consistent branding across images
 - **Cleaner API**: Removed arbitrary limitations that didn't serve a purpose
 - **Better UX**: Smart wrapping and truncation provide better user experience
+- **Professional Look**: Logo overlay adds professional branding to generated images
 
 ### Files Modified
-- `server.js` - Core functionality updates
-- `README.md` - Documentation updates
+- `server.js` - Core functionality updates with logo overlay
+- `README.md` - Documentation updates with logo parameter
+- `Logo.svg` - Sample logo file for testing
 - `notes/history.md` - This file
 
 ## 2025-09-13 - Enhanced Development Environment
