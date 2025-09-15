@@ -141,7 +141,7 @@ services:
 
 1. **Clone and setup**:
    ```bash
-   git clone <your-repo>
+   git clone RobinWts/overlay_for_Insta
    cd overlay_for_Insta
    ./setup-dev.sh
    ```
