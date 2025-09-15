@@ -10,7 +10,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
 - `Logo.svg`
 - `Dockerfile`
 
-Then add the overlay service to your `docker-compose.yml`:
+Then add the overlay service to your `docker-compose.yml` (this is an exmaple config for a basic n8n installation):
 
 ```yaml
 networks:
