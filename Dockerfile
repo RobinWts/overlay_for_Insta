@@ -23,7 +23,7 @@ USER node
 EXPOSE 8080
 
 # Healthcheck: simple GET on Overlay
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=120s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -fsS "http://localhost:8080/overlay?img=https://picsum.photos/300/300&title=test&source=test" >/dev/null || exit 1
 
 CMD ["node", "server.js"]
