@@ -56,7 +56,7 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
 
   // Calculate font sizes as percentages of the base dimension
   // These ratios have been tuned for optimal readability across different image sizes
-  const fsTitle = Math.round(base * 0.05);      // Title font size (5% of base dimension)
+  const fsTitle = Math.round(base * 0.055);      // Title font size (5.5% of base dimension)
   const fsSrc = Math.round(base * 0.028);     // Source font size (2.8% of base dimension)
 
   // Calculate line height for proper text spacing
