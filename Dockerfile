@@ -1,33 +1,29 @@
 FROM node:20.3.0-bookworm-slim
 
-# Install libvips for Sharp image processing
+# install libvips and curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libvips \
+    libvips curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Copy package files
-COPY package*.json ./
+# only needed for production
+COPY package.json package-lock.json ./
 
-# Install production dependencies
+# install production dependencies
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# Copy application code
-COPY server.js ./
+# copy app files and assets
+COPY --chown=node:node server.js Logo.svg ./
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+# run as non-root
+USER node
 
-# Expose port
 EXPOSE 8080
 
-# Health check
+# Healthcheck: simple GET on Overlay
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/overlay?img=https://picsum.photos/300/300&title=test&source=test || exit 1
+    CMD curl -fsS "http://localhost:8080/overlay?img=https://picsum.photos/300/300&title=test&source=test" >/dev/null || exit 1
 
-# Start the application
 CMD ["node", "server.js"]
