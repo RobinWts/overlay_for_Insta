@@ -35,6 +35,9 @@
    - Usage examples
    - Monitoring status indication
 
+5. **Bug fix**:
+   - fixed some Dockerfile issues and included package-lock.json
+
 ### Benefits
 - **Debugging**: Easy to track down issues with specific requests
 - **Performance**: Identify bottlenecks in the processing pipeline
@@ -44,6 +47,7 @@
 
 ### Files Modified
 - `server.js` - Added comprehensive logging throughout
+- `Dockerfile` - fixed install
 - `notes/history.md` - This file
 
 ## 2025-09-14 - Enhanced Text Handling and Logo Overlay Feature
