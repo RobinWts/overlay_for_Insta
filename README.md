@@ -208,6 +208,33 @@ curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Cust
 
 ## Development
 
+### Local Development Fonts
+
+For the best development experience, install the Inter font locally to match the production Docker environment:
+
+#### macOS
+```bash
+# Install Inter font using Homebrew
+brew install --cask font-inter
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+# Install Inter font
+sudo apt-get update
+sudo apt-get install fonts-inter
+```
+
+#### Windows
+1. Download Inter font from [GitHub releases](https://github.com/rsms/inter/releases)
+2. Install the font files through Windows Font Manager
+
+#### Other Platforms
+- Download Inter font from the [official repository](https://github.com/rsms/inter)
+- Install according to your platform's font installation process
+
+**Note**: The server will fall back to system fonts if Inter is not available, but installing Inter locally ensures your development output matches production exactly.
+
 ### Available Scripts
 
 - `npm run dev` - Start development server with auto-reload

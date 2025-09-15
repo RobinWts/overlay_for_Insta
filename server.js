@@ -146,7 +146,7 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
 
   // Calculate stroke widths for text outlines (for better readability)
   // Stroke width is proportional to font size for consistent appearance
-  const strokeTitle = Math.max(1, Math.round(fsTitle * 0.05));  // 5% of title font size
+  const strokeTitle = Math.max(1, Math.round(fsTitle * 0.08));  // 8% of title font size
   const strokeSrc = Math.max(1, Math.round(fsSrc * 0.08));    // 8% of source font size
 
   // === SVG GENERATION ===
@@ -172,8 +172,8 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
   <rect x="0" y="0" width="${w}" height="${topBandH}" fill="url(#gTop)"/>
   <rect x="0" y="${h - bottomBandH}" width="${w}" height="${bottomBandH}" fill="url(#gBot)"/>
 
-  <!-- Title text group (centered, up to 5 lines, with stroke outline) -->
-  <g font-family="-apple-system,Segoe UI,Roboto,Arial"
+  <!-- Title text group (centered, with stroke outline) -->
+  <g font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
      font-weight="800"
      font-size="${fsTitle}"
      text-anchor="middle"
@@ -185,8 +185,8 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
 
   <!-- Source attribution (bottom right corner) -->
   <text x="${w - sidePad}" y="${h - Math.round(bottomBandH * 0.35)}"
-        font-family="-apple-system,Segoe UI,Roboto,Arial"
-        font-weight="700" font-size="${fsSrc}"
+        font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
+        font-weight="600" font-size="${fsSrc}"
         text-anchor="end"
         style="fill:#fff; stroke:#000; stroke-width:${strokeSrc}px; paint-order:stroke fill;">
     ${esc(source)}

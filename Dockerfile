@@ -1,9 +1,12 @@
 FROM node:20.3.0-bookworm-slim
 
-# install libvips and curl
+# install libvips, font dependencies, and curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libvips curl \
-    && rm -rf /var/lib/apt/lists/*
+    libvips \
+    librsvg2-2 libpango-1.0-0 libharfbuzz0b libcairo2 \
+    fontconfig fonts-inter fonts-liberation fonts-dejavu-core curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f -v
 
 WORKDIR /app
 ENV NODE_ENV=production
