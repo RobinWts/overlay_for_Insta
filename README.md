@@ -4,7 +4,7 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 
 ## Minimalistic Setup
 
-This service can be easily integrated into existing Docker Compose setups by copying the following files to a subdirectory:
+This service can be easily integrated into existing Docker Compose setups by copying the following files to a subdirectory (e.g. /overlay):
 - `server.js`
 - `package.json` 
 - `Logo.svg`
