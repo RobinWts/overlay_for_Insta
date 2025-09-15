@@ -1,6 +1,122 @@
 # Overlay Image Server
 
-A Node.js server that creates Instagram-style image overlays with customizable title and source text. Perfect for social media content generation and automated image processing. (e.g. n8n)
+A Node.js server that creates Instagram-style image overlays with customizable title and source text. Perfect for social media content generation and automated image processing. Originally developed for vServer-hosted n8n workflows.
+
+## Minimalistic Setup
+
+This service can be easily integrated into existing Docker Compose setups by copying the following files to a subdirectory:
+- `server.js`
+- `package.json` 
+- `Logo.svg`
+- `Dockerfile`
+
+Then add the overlay service to your `docker-compose.yml`:
+
+```yaml
+networks:
+  proxy:
+    external: false
+
+volumes:
+  traefik_data:
+  db_data:
+
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--configfile=/traefik/traefik.yml"
+      - "--certificatesresolvers.le-http.acme.email=your-email@example.com"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/traefik/dynamic.yml:ro
+      - ./traefik/acme.json:/traefik/acme.json
+    networks: [proxy]
+    labels:
+      # Keep Traefik off auto-updates for stability
+      com.centurylinklabs.watchtower.enable: "false"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks: [proxy]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      N8N_HOST: "${DOMAIN}"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "https"
+      WEBHOOK_URL: "https://${DOMAIN}/"
+      DB_TYPE: "postgresdb"
+      DB_POSTGRESDB_HOST: "n8n-postgres"
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: "${POSTGRES_DB}"
+      DB_POSTGRESDB_USER: "${POSTGRES_USER}"
+      DB_POSTGRESDB_PASSWORD: "${POSTGRES_PASSWORD}"
+      N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY}"
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: "${N8N_BASIC_AUTH_USER}"
+      N8N_BASIC_AUTH_PASSWORD: "${N8N_BASIC_AUTH_PASSWORD}"
+      GENERIC_TIMEZONE: "${GENERIC_TIMEZONE}"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    networks: [proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.n8n.rule: "Host(`${DOMAIN}`)"
+      traefik.http.routers.n8n.entrypoints: "websecure"
+      traefik.http.routers.n8n.tls.certresolver: "le-http"
+      traefik.http.services.n8n.loadbalancer.server.port: "5678"
+      traefik.http.routers.n8n.middlewares: "securityHeaders@file"
+      com.centurylinklabs.watchtower.enable: "true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    command: --label-enable --cleanup --interval 86400
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [proxy]
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      
+  overlay:
+    build:
+      context: ./overlay
+    container_name: overlay
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "false"
+```
 
 ## Features
 
