@@ -460,24 +460,20 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
   const D1 = Math.max(1, Math.round(duration1 * 30));
   const D2 = Math.max(1, Math.round(duration2 * 30));
 
-  // Ken Burns effect optimized for smooth scrolling
-  // Key improvements:
-  // 1. Upscale first to minimize rounding errors (8x resolution)
-  // 2. Use smoother pan expressions with proper easing
-  // 3. Better zoom increment for visible but smooth motion
-  // 4. Ensure consistent frame timing
-
-  const upscaleW = 8640; // 8x width for smooth calculations
-  const upscaleH = 15360; // 8x height for smooth calculations
+  // Ken Burns effect with reliable panning for all aspect ratios
+  // Use a simpler approach that works consistently across different image types
+  // Each slide gets proper scaling and continuous motion for its full duration
 
   let filters = [
-    // Slide 1 - Smooth Ken Burns with upscaling to reduce jitter
-    `[${s1}:v]scale=${upscaleW}:${upscaleH}:force_original_aspect_ratio=increase,crop=${upscaleW}:${upscaleH},` +
-    `zoompan=z='min(1.0+0.002*on,1.2)':d=${D1}:x='iw/2-(iw/zoom/2)+(iw-ow/zoom)*on/${D1 - 1}':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,format=yuv420p[v1]`,
+    // Slide 1 - LEFT TO RIGHT pan: starts at x=0, ends at x=max
+    // Simple linear progression from 0 to full width over duration
+    `[${s1}:v]scale=4320:7680:force_original_aspect_ratio=increase,crop=4320:7680,` +
+    `zoompan=z='1+0.0008*on':d=${D1}:x='on*2':y='(ih-oh)/2':s=1080x1920:fps=30,format=yuv420p[v1]`,
 
-    // Slide 2 - Smooth Ken Burns with reverse pan direction
-    `[${s2}:v]scale=${upscaleW}:${upscaleH}:force_original_aspect_ratio=increase,crop=${upscaleW}:${upscaleH},` +
-    `zoompan=z='min(1.0+0.002*on,1.2)':d=${D2}:x='iw/2-(iw/zoom/2)+(iw-ow/zoom)*(1-on/${D2 - 1})':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,format=yuv420p[v2]`,
+    // Slide 2 - RIGHT TO LEFT pan: starts at x=max, ends at x=0
+    // Simple reverse progression from full width to 0 over duration
+    `[${s2}:v]scale=4320:7680:force_original_aspect_ratio=increase,crop=4320:7680,` +
+    `zoompan=z='1+0.0008*on':d=${D2}:x='max(0,(iw-ow)-on*2)':y='(ih-oh)/2':s=1080x1920:fps=30,format=yuv420p[v2]`,
   ].join(";");
 
   // Text-Overlays (PNG/SVG sollten 1080x1920 oder transparenten Canvas haben)
