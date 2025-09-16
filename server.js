@@ -20,8 +20,6 @@ import fs from 'fs';
 import fsp from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -40,20 +38,10 @@ const REQUIRE_API_KEY = process.env.REQUIRE_API_KEY !== 'false'; // Default to t
 // Media and Path Configuration
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(process.cwd(), 'media');
-const REELS_SUBDIR = process.env.REELS_SUBDIR || 'reels';
-const TMP_SUBDIR = process.env.TMP_SUBDIR || 'tmp';
-const BG_DIR = process.env.BG_DIR || path.join(process.cwd(), 'assets', 'reels_bg');
-
-// Construct full paths
-const REELS_DIR = path.join(MEDIA_DIR, REELS_SUBDIR);
-const TMP_DIR = path.join(MEDIA_DIR, TMP_SUBDIR);
-
-// Promisify execFile for async/await usage
-const execFileAsync = promisify(execFile);
 
 // Ensure directories exist
 const ensureDirectories = () => {
-  const directories = [MEDIA_DIR, REELS_DIR, TMP_DIR, BG_DIR];
+  const directories = [MEDIA_DIR];
   for (const dir of directories) {
     try {
       if (!fs.existsSync(dir)) {
@@ -143,368 +131,22 @@ app.get('/healthz', (req, res) => {
  * Returns:
  * - Video file URL or processing status
  */
+/**
+ * 2 Slides Reel endpoint (placeholder implementation)
+ * 
+ * GET /2slidesReel - Returns not implemented status
+ */
 app.get('/2slidesReel', validateApiKey, async (req, res) => {
   const requestId = Math.random().toString(36).substr(2, 9);
-  const startTime = Date.now();
+  console.log(`🎬 [${requestId}] 2slidesReel request (not implemented)`);
 
-  console.log(`🎬 [${requestId}] 2slidesReel request started`);
-  console.log(`📋 [${requestId}] Request parameters:`, {
-    slide1: req.query.slide1 ? 'provided' : 'missing',
-    slide2: req.query.slide2 ? 'provided' : 'missing',
-    title1: req.query.title1 ? `"${req.query.title1.substring(0, 50)}${req.query.title1.length > 50 ? '...' : ''}"` : 'none',
-    title2: req.query.title2 ? `"${req.query.title2.substring(0, 50)}${req.query.title2.length > 50 ? '...' : ''}"` : 'none',
-    duration1: req.query.duration1 || 'default (4)',
-    duration2: req.query.duration2 || 'default (4)',
-    transition: req.query.transition || 'default (fade)'
-  });
-
-  try {
-    // === PARAMETER EXTRACTION AND VALIDATION ===
-
-    // Extract and validate required image URLs
-    const slide1 = req.query.slide1;
-    const slide2 = req.query.slide2;
-
-    if (!slide1) {
-      console.log(`❌ [${requestId}] Missing required parameter: slide1`);
-      return res.status(400).json({ error: 'slide1 required' });
-    }
-
-    if (!slide2) {
-      console.log(`❌ [${requestId}] Missing required parameter: slide2`);
-      return res.status(400).json({ error: 'slide2 required' });
-    }
-
-    // Extract optional parameters with defaults
-    const title1 = req.query.title1 || '';
-    const title2 = req.query.title2 || '';
-    const duration1 = Number(req.query.duration1 || 4);
-    const duration2 = Number(req.query.duration2 || 4);
-    const transition = req.query.transition || 'fade';
-
-    // Validate durations are reasonable
-    if (duration1 < 1 || duration1 > 30 || duration2 < 1 || duration2 > 30) {
-      console.log(`❌ [${requestId}] Invalid durations: ${duration1}s, ${duration2}s`);
-      return res.status(400).json({
-        error: 'Invalid durations. Duration must be between 1 and 30 seconds.'
-      });
-    }
-
-    // Validate transition type (only fade is reliably supported across FFmpeg versions)
-    const validTransitions = ['fade'];
-    if (!validTransitions.includes(transition)) {
-      console.log(`❌ [${requestId}] Invalid transition: ${transition}`);
-      return res.status(400).json({
-        error: 'Invalid transition. Must be one of: ' + validTransitions.join(', ')
-      });
-    }
-
-    console.log(`✅ [${requestId}] Parameters validated successfully`);
-    console.log(`📐 [${requestId}] Processing reel: slide1=${duration1}s, slide2=${duration2}s, transition=${transition}`);
-
-    // === VIDEO GENERATION IMPLEMENTATION ===
-
-    console.log(`🎬 [${requestId}] Starting video generation...`);
-
-    try {
-      // Generate unique filename for this reel
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const reelId = `${timestamp}_${requestId}`;
-      const outputFilename = `reel_${reelId}.mp4`;
-      const outputPath = path.join(REELS_DIR, outputFilename);
-
-      // Ensure output directory exists
-      if (!fs.existsSync(REELS_DIR)) {
-        fs.mkdirSync(REELS_DIR, { recursive: true });
-      }
-
-      // Generate the video
-      const videoUrl = await generate2SlidesReel({
-        slide1,
-        slide2,
-        title1,
-        title2,
-        duration1,
-        duration2,
-        transition,
-        outputPath,
-        requestId
-      });
-
-      const totalTime = Date.now() - startTime;
-      console.log(`🎉 [${requestId}] Video generation completed successfully (${totalTime}ms)`);
-
-      res.json({
-        success: true,
-        videoUrl,
-        requestId,
-        processingTime: totalTime,
-        parameters: {
-          slide1,
-          slide2,
-          title1,
-          title2,
-          duration1,
-          duration2,
-          transition
-        }
-      });
-
-    } catch (videoError) {
-      console.log(`💥 [${requestId}] Video generation failed:`, videoError.message);
-      const totalTime = Date.now() - startTime;
-      res.status(500).json({
-        error: 'Video generation failed',
-        message: videoError.message,
-        requestId,
-        processingTime: totalTime
-      });
-    }
-
-  } catch (error) {
-    const totalTime = Date.now() - startTime;
-    console.log(`💥 [${requestId}] 2slidesReel request failed after ${totalTime}ms:`, error.message);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message,
-      requestId
-    });
-  }
-});
-
-/**
- * Generates a 2-slide Instagram reel video with Ken Burns effect
- * 
- * @param {Object} params - Video generation parameters
- * @param {string} params.slide1 - URL of first slide image
- * @param {string} params.slide2 - URL of second slide image
- * @param {string} params.title1 - Text overlay for first slide
- * @param {string} params.title2 - Text overlay for second slide
- * @param {number} params.duration1 - Duration of first slide in seconds
- * @param {number} params.duration2 - Duration of second slide in seconds
- * @param {string} params.transition - Transition type between slides
- * @param {string} params.outputPath - Path where to save the video
- * @param {string} params.requestId - Request ID for logging
- * @returns {Promise<string>} URL of the generated video
- */
-async function generate2SlidesReel({ slide1, slide2, title1, title2, duration1, duration2, transition, outputPath, requestId }) {
-  console.log(`🎬 [${requestId}] Starting 2slidesReel generation...`);
-
-  // Create temporary files for processing
-  const tempDir = path.join(TMP_DIR, requestId);
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  try {
-    // Download and process images
-    console.log(`📥 [${requestId}] Downloading images...`);
-    const slide1Path = path.join(tempDir, 'slide1.jpg');
-    const slide2Path = path.join(tempDir, 'slide2.jpg');
-
-    await downloadImage(slide1, slide1Path, requestId);
-    await downloadImage(slide2, slide2Path, requestId);
-
-    // Generate text overlays if provided
-    let title1Path = null;
-    let title2Path = null;
-
-    if (title1) {
-      title1Path = path.join(tempDir, 'title1.png');
-      await generateTextOverlay(title1, title1Path, requestId);
-    }
-
-    if (title2) {
-      title2Path = path.join(tempDir, 'title2.png');
-      await generateTextOverlay(title2, title2Path, requestId);
-    }
-
-    // Generate FFmpeg command
-    console.log(`🔧 [${requestId}] Building FFmpeg command...`);
-    const ffmpegCommand = buildFFmpegCommand({
-      slide1Path,
-      slide2Path,
-      title1Path,
-      title2Path,
-      duration1,
-      duration2,
-      transition,
-      outputPath,
-      requestId
-    });
-
-    // Execute FFmpeg
-    console.log(`⚙️ [${requestId}] Executing FFmpeg...`);
-    await execFFmpeg(ffmpegCommand, requestId);
-
-    // Generate video URL
-    const videoUrl = `${BASE_URL}/media${REELS_SUBDIR}/${path.basename(outputPath)}`;
-
-    console.log(`✅ [${requestId}] Video generated successfully: ${videoUrl}`);
-    return videoUrl;
-
-  } finally {
-    // Clean up temporary files
-    console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
-    try {
-      await fsp.rmdir(tempDir, { recursive: true });
-    } catch (cleanupError) {
-      console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
-    }
-  }
-}
-
-/**
- * Downloads an image from URL to local path
- * 
- * @param {string} imageUrl - URL of the image to download
- * @param {string} outputPath - Local path to save the image
- * @param {string} requestId - Request ID for logging
- */
-async function downloadImage(imageUrl, outputPath, requestId) {
-  console.log(`📥 [${requestId}] Downloading: ${imageUrl}`);
-
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
-  }
-
-  const buffer = Buffer.from(await response.arrayBuffer());
-  await fsp.writeFile(outputPath, buffer);
-
-  console.log(`✅ [${requestId}] Downloaded: ${outputPath} (${buffer.length} bytes)`);
-}
-
-/**
- * Generates a text overlay PNG file for video reels
- * Uses the same professional styling as the overlay endpoint but optimized for video
- * 
- * @param {string} text - Text to overlay
- * @param {string} outputPath - Path to save the PNG file
- * @param {string} requestId - Request ID for logging
- */
-async function generateTextOverlay(text, outputPath, requestId) {
-  console.log(`🎨 [${requestId}] Generating text overlay: "${text}"`);
-
-  // Use the same makeSvg function but with video-optimized dimensions for safe zone
-  // 1080x300 for center safe zone of 1080x1920 video (positioned in center 1080x1080 area)
-  const svg = makeSvg(1080, 1080, text, '', 7); // 7 lines max for video
-
-  // Convert SVG to PNG using Sharp
-  const pngBuffer = await sharp(Buffer.from(svg))
-    .png()
-    .toBuffer();
-
-  await fsp.writeFile(outputPath, pngBuffer);
-  console.log(`✅ [${requestId}] Text overlay generated: ${outputPath}`);
-}
-
-/**
- * Builds FFmpeg command for video generation
- * 
- * @param {Object} params - Command parameters
- * @returns {Array} FFmpeg command arguments
- */
-function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, duration1, duration2, transition, outputPath, requestId }) {
-  const command = [
-    '-y', // Overwrite output file
-    '-loop', '1', '-i', slide1Path,
-    '-loop', '1', '-i', slide2Path
-  ];
-
-  // Add text overlay inputs if they exist
-  if (title1Path) {
-    command.push('-loop', '1', '-i', title1Path);
-  }
-  if (title2Path) {
-    command.push('-loop', '1', '-i', title2Path);
-  }
-
-  // Build filter complex
-  const filterComplex = buildFilterComplex({
-    hasTitle1: !!title1Path,
-    hasTitle2: !!title2Path,
-    duration1,
-    duration2,
-    transition,
+  res.status(501).json({
+    error: 'Not Implemented',
+    message: '2slidesReel endpoint is not yet implemented',
     requestId
   });
+});
 
-  command.push('-filter_complex', filterComplex);
-  command.push('-map', '[vfinal]');
-  command.push('-t', (duration1 + duration2 - 1).toString()); // Total duration minus 1 second for transition
-  command.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '30');
-  command.push(outputPath);
-
-  console.log(`🔧 [${requestId}] FFmpeg command: ffmpeg ${command.join(' ')}`);
-  return command;
-}
-
-/**
- * Builds FFmpeg filter complex for video generation
- * 
- * @param {Object} params - Filter parameters
- * @returns {string} Filter complex string
- */
-function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transition, requestId }) {
-  console.log(`🎬 [${requestId}] Building filter complex...`);
-
-  // Input indices: 0=slide1, 1=slide2, 2=title1 (if exists), 3=title2 (if exists)
-  let inputIndex = 0;
-  const slide1Index = inputIndex++;
-  const slide2Index = inputIndex++;
-  const title1Index = hasTitle1 ? inputIndex++ : -1;
-  const title2Index = hasTitle2 ? inputIndex++ : -1;
-
-  // Process slide1 with Ken Burns effect (smooth zoom + diagonal pan from top-left to bottom-right)
-  let filters = `[${slide1Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration1 * 30}:x='iw/2-(iw/zoom/2)+on*2':y='ih/2-(ih/zoom/2)+on*1.2':s=1080x1920[v1]`;
-
-  // Process slide2 with Ken Burns effect (smooth zoom + diagonal pan from bottom-right to top-left)
-  filters += `;[${slide2Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration2 * 30}:x='iw/2-(iw/zoom/2)-on*2.5':y='ih/2-(ih/zoom/2)-on*1.5':s=1080x1920[v2]`;
-
-  // Add text overlays if they exist (positioned in center safe zone - 1080x1080 area)
-  if (hasTitle1) {
-    filters += `;[v1][${title1Index}:v]overlay=0:810[v1_with_text]`; // Center vertically in safe zone
-  }
-  if (hasTitle2) {
-    filters += `;[v2][${title2Index}:v]overlay=0:810[v2_with_text]`; // Center vertically in safe zone
-  }
-
-  // Apply transition between slides
-  const v1Final = hasTitle1 ? 'v1_with_text' : 'v1';
-  const v2Final = hasTitle2 ? 'v2_with_text' : 'v2';
-  const transitionOffset = duration1 - 1; // 1 second transition
-
-  // Use fade transition (most reliable across FFmpeg versions)
-  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=1:offset=${transitionOffset}[vfinal]`;
-
-  return filters;
-}
-
-/**
- * Executes FFmpeg command
- * 
- * @param {Array} command - FFmpeg command arguments
- * @param {string} requestId - Request ID for logging
- */
-async function execFFmpeg(command, requestId) {
-  console.log(`⚙️ [${requestId}] Executing FFmpeg...`);
-
-  try {
-    const { stdout, stderr } = await execFileAsync('ffmpeg', command, {
-      maxBuffer: 1024 * 1024 * 10 // 10MB buffer
-    });
-
-    if (stderr) {
-      console.log(`📝 [${requestId}] FFmpeg stderr:`, stderr.substring(0, 500) + (stderr.length > 500 ? '...' : ''));
-    }
-
-    console.log(`✅ [${requestId}] FFmpeg completed successfully`);
-  } catch (error) {
-    console.error(`💥 [${requestId}] FFmpeg error:`, error.message);
-    throw new Error(`FFmpeg execution failed: ${error.message}`);
-  }
-}
 
 /**
  * Generates SVG overlay with centered title text and source attribution
@@ -854,14 +496,11 @@ app.listen(PORT, () => {
   }
   console.log(`🌐 Base URL: ${BASE_URL}`);
   console.log(`📁 Media directory: ${MEDIA_DIR}`);
-  console.log(`🎬 Reels directory: ${REELS_DIR}`);
-  console.log(`📂 Temp directory: ${TMP_DIR}`);
-  console.log(`🎨 Background directory: ${BG_DIR}`);
   console.log('');
   console.log('📋 Available endpoints:');
   console.log(`   GET  /healthz - Health check`);
   console.log(`   GET  /overlay - Image overlay generation`);
-  console.log(`   GET  /2slidesReel - Two-slide reel generation`);
+  console.log(`   GET  /2slidesReel - Not implemented (placeholder)`);
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
