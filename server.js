@@ -190,8 +190,8 @@ app.get('/2slidesReel', validateApiKey, async (req, res) => {
       });
     }
 
-    // Validate transition type
-    const validTransitions = ['fade', 'slide', 'dissolve', 'wipe'];
+    // Validate transition type (only fade is reliably supported across FFmpeg versions)
+    const validTransitions = ['fade'];
     if (!validTransitions.includes(transition)) {
       console.log(`❌ [${requestId}] Invalid transition: ${transition}`);
       return res.status(400).json({
@@ -376,7 +376,8 @@ async function downloadImage(imageUrl, outputPath, requestId) {
 }
 
 /**
- * Generates a text overlay PNG file
+ * Generates a text overlay PNG file for video reels
+ * Uses the same professional styling as the overlay endpoint but optimized for video
  * 
  * @param {string} text - Text to overlay
  * @param {string} outputPath - Path to save the PNG file
@@ -385,23 +386,20 @@ async function downloadImage(imageUrl, outputPath, requestId) {
 async function generateTextOverlay(text, outputPath, requestId) {
   console.log(`🎨 [${requestId}] Generating text overlay: "${text}"`);
 
-  // Create SVG for text overlay (1080x200 for top section)
+  // Create a video-optimized text overlay with semi-transparent background
   const svg = `
 <svg width="1080" height="200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="textGradient" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#000" stop-opacity="0.7"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="1080" height="200" fill="url(#textGradient)"/>
-  <text x="540" y="120" 
-        font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
-        font-weight="800" font-size="48"
-        text-anchor="middle"
-        style="fill:#fff; stroke:#000; stroke-width:3px; paint-order:stroke fill;">
-    ${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-  </text>
+  <!-- Semi-transparent background for text readability -->
+  <rect x="0" y="0" width="1080" height="200" fill="#000" fill-opacity="0.6"/>
+  
+  <!-- Text content using the same styling as overlay endpoint -->
+  <g font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
+     font-weight="800"
+     font-size="48"
+     text-anchor="middle"
+     style="fill:#fff; stroke:#000; stroke-width:3px; paint-order:stroke fill;">
+    <text x="540" y="120">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
+  </g>
 </svg>`;
 
   // Convert SVG to PNG using Sharp
@@ -422,16 +420,16 @@ async function generateTextOverlay(text, outputPath, requestId) {
 function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, duration1, duration2, transition, outputPath, requestId }) {
   const command = [
     '-y', // Overwrite output file
-    '-loop', '1', '-t', duration1.toString(), '-i', slide1Path,
-    '-loop', '1', '-t', duration2.toString(), '-i', slide2Path
+    '-loop', '1', '-i', slide1Path,
+    '-loop', '1', '-i', slide2Path
   ];
 
   // Add text overlay inputs if they exist
   if (title1Path) {
-    command.push('-loop', '1', '-t', duration1.toString(), '-i', title1Path);
+    command.push('-loop', '1', '-i', title1Path);
   }
   if (title2Path) {
-    command.push('-loop', '1', '-t', duration2.toString(), '-i', title2Path);
+    command.push('-loop', '1', '-i', title2Path);
   }
 
   // Build filter complex
@@ -446,6 +444,7 @@ function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, du
 
   command.push('-filter_complex', filterComplex);
   command.push('-map', '[vfinal]');
+  command.push('-t', (duration1 + duration2 - 1).toString()); // Total duration minus 1 second for transition
   command.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '30');
   command.push(outputPath);
 
@@ -469,13 +468,13 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
   const title1Index = hasTitle1 ? inputIndex++ : -1;
   const title2Index = hasTitle2 ? inputIndex++ : -1;
 
-  // Process slide1 with Ken Burns effect
-  let filters = `[${slide1Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration1 * 30}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920[v1]`;
+  // Process slide1 with Ken Burns effect (smooth zoom + diagonal pan from top-left to bottom-right)
+  let filters = `[${slide1Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration1 * 30}:x='iw/2-(iw/zoom/2)+on*2':y='ih/2-(ih/zoom/2)+on*1.2':s=1080x1920[v1]`;
 
-  // Process slide2 with Ken Burns effect  
-  filters += `;[${slide2Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration2 * 30}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920[v2]`;
+  // Process slide2 with Ken Burns effect (smooth zoom + diagonal pan from bottom-right to top-left)
+  filters += `;[${slide2Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration2 * 30}:x='iw/2-(iw/zoom/2)-on*2.5':y='ih/2-(ih/zoom/2)-on*1.5':s=1080x1920[v2]`;
 
-  // Add text overlays if they exist
+  // Add text overlays if they exist (positioned in safe zone - center 1080x1080 area)
   if (hasTitle1) {
     filters += `;[v1][${title1Index}:v]overlay=0:0[v1_with_text]`;
   }
@@ -488,22 +487,8 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
   const v2Final = hasTitle2 ? 'v2_with_text' : 'v2';
   const transitionOffset = duration1 - 1; // 1 second transition
 
-  let transitionFilter = 'fade';
-  switch (transition) {
-    case 'slide':
-      transitionFilter = 'slide';
-      break;
-    case 'dissolve':
-      transitionFilter = 'dissolve';
-      break;
-    case 'wipe':
-      transitionFilter = 'wipe';
-      break;
-    default:
-      transitionFilter = 'fade';
-  }
-
-  filters += `;[${v1Final}][${v2Final}]xfade=transition=${transitionFilter}:duration=1:offset=${transitionOffset}[vfinal]`;
+  // Use fade transition (most reliable across FFmpeg versions)
+  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=1:offset=${transitionOffset}[vfinal]`;
 
   return filters;
 }
@@ -646,11 +631,7 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
   // Calculate starting Y position for text, with slight offset for better visual balance
   const startY = Math.max(topPad, Math.round(topPad + fsTitle * 0.2));
 
-  // Calculate gradient band heights for text readability
-  // Top band covers the title area with some padding
-  const topBandH = Math.min(Math.round(blockH + fsTitle * 1.2), Math.round(h * 0.5));
-
-  // Bottom band for source attribution (22% of image height)
+  // Calculate bottom band height for source attribution positioning
   const bottomBandH = Math.round(h * 0.22);
 
   // === STROKE WIDTH CALCULATIONS ===
@@ -665,24 +646,6 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
   // Return the complete SVG markup with all calculated values
   return `
 <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Define gradient definitions for text readability -->
-  <defs>
-    <!-- Top gradient: dark to transparent (for title text) -->
-    <linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#000" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-    </linearGradient>
-    <!-- Bottom gradient: dark to transparent (for source text) -->
-    <linearGradient id="gBot" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0%" stop-color="#000" stop-opacity="0.45"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Background gradient bands for text readability -->
-  <rect x="0" y="0" width="${w}" height="${topBandH}" fill="url(#gTop)"/>
-  <rect x="0" y="${h - bottomBandH}" width="${w}" height="${bottomBandH}" fill="url(#gBot)"/>
-
   <!-- Title text group (centered, with stroke outline) -->
   <g font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
      font-weight="800"
