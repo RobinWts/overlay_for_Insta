@@ -67,6 +67,88 @@ async function testApiKeyValidation() {
 }
 
 /**
+ * Test the 2slidesReel endpoint (placeholder implementation)
+ */
+async function test2SlidesReelEndpoint() {
+    console.log('🎬 Testing 2slidesReel endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid 2slidesReel request',
+            payload: {
+                slide1: {
+                    image: 'https://picsum.photos/1080/1920?random=1',
+                    title: 'First Slide Title',
+                    source: '@user1'
+                },
+                slide2: {
+                    image: 'https://picsum.photos/1080/1920?random=2',
+                    title: 'Second Slide Title',
+                    source: '@user2'
+                },
+                duration: 3,
+                transition: 'fade'
+            },
+            shouldSucceed: false // Currently returns 501 Not Implemented
+        },
+        {
+            name: 'Missing slide1 data',
+            payload: {
+                slide2: {
+                    image: 'https://picsum.photos/1080/1920?random=2',
+                    title: 'Second Slide Title',
+                    source: '@user2'
+                }
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Missing image URLs',
+            payload: {
+                slide1: {
+                    title: 'First Slide Title',
+                    source: '@user1'
+                },
+                slide2: {
+                    title: 'Second Slide Title',
+                    source: '@user2'
+                }
+            },
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const response = await fetch(`${BASE_URL}/2slidesReel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY
+                },
+                body: JSON.stringify(testCase.payload)
+            });
+
+            const responseData = await response.json();
+
+            if (testCase.shouldSucceed && response.ok) {
+                console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
+            } else if (!testCase.shouldSucceed && !response.ok) {
+                console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else {
+                console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
+            }
+        } catch (error) {
+            console.log(`   💥 Exception: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
+/**
  * Test the overlay endpoint with sample data
  */
 async function testOverlayEndpoint() {
@@ -156,6 +238,20 @@ async function testServerHealth() {
     console.log('🏥 Testing server health...\n');
 
     try {
+        // Test health check endpoint first (no API key required)
+        const healthResponse = await fetch(`${BASE_URL}/healthz`);
+
+        if (healthResponse.ok) {
+            const healthData = await healthResponse.json();
+            console.log('✅ Health check endpoint responding');
+            console.log(`   Version: ${healthData.version}`);
+            console.log(`   Available endpoints: ${healthData.endpoints.join(', ')}`);
+        } else {
+            console.log(`❌ Health check failed: ${healthResponse.status}`);
+            return false;
+        }
+
+        // Test overlay endpoint with API key
         const response = await fetch(`${BASE_URL}/overlay?img=https://picsum.photos/100/100&title=health&source=test`, {
             headers: { 'X-API-Key': API_KEY }
         });
@@ -186,6 +282,7 @@ async function runTests() {
     if (isHealthy) {
         await testApiKeyValidation();
         await testOverlayEndpoint();
+        await test2SlidesReelEndpoint();
     }
 
     console.log('='.repeat(50));
@@ -197,4 +294,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, testOverlayEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, testOverlayEndpoint, testServerHealth, runTests };

@@ -16,12 +16,19 @@ import express from 'express';
 import sharp from 'sharp';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import fsp from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Initialize Express application
 const app = express();
+app.use(express.json({ limit: '2mb' }));
 
 // Set port from environment variable or default to 8080
 const PORT = process.env.PORT || 8080;
@@ -29,6 +36,168 @@ const PORT = process.env.PORT || 8080;
 // API Security Configuration
 const API_KEY = process.env.API_KEY || 'default-api-key-change-in-production';
 const REQUIRE_API_KEY = process.env.REQUIRE_API_KEY !== 'false'; // Default to true unless explicitly disabled
+
+// Media and Path Configuration
+const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
+const MEDIA_DIR = process.env.MEDIA_DIR || path.join(process.cwd(), 'media');
+const REELS_SUBDIR = process.env.REELS_SUBDIR || 'reels';
+const TMP_SUBDIR = process.env.TMP_SUBDIR || 'tmp';
+const BG_DIR = process.env.BG_DIR || path.join(process.cwd(), 'assets', 'reels_bg');
+
+// Construct full paths
+const REELS_DIR = path.join(MEDIA_DIR, REELS_SUBDIR);
+const TMP_DIR = path.join(MEDIA_DIR, TMP_SUBDIR);
+
+// Promisify execFile for async/await usage
+const execFileAsync = promisify(execFile);
+
+// Ensure directories exist
+const ensureDirectories = () => {
+  const directories = [MEDIA_DIR, REELS_DIR, TMP_DIR, BG_DIR];
+  for (const dir of directories) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Created directory: ${dir}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️  Could not create directory ${dir}: ${error.message}`);
+    }
+  }
+};
+
+// Initialize directories on startup
+ensureDirectories();
+
+// Serve media files statically
+app.use('/media', express.static(MEDIA_DIR, { fallthrough: false }));
+
+/**
+ * API Key Validation Middleware
+ * 
+ * Validates the API key from the X-API-Key header if API key validation is enabled.
+ * This provides basic security for the overlay service.
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object  
+ * @param {Function} next - Express next middleware function
+ */
+const validateApiKey = (req, res, next) => {
+  // Skip validation if API key requirement is disabled
+  if (!REQUIRE_API_KEY) {
+    return next();
+  }
+
+  // Extract API key from X-API-Key header
+  const providedKey = req.headers['x-api-key'];
+
+  if (!providedKey) {
+    console.log(`❌ [${req.id || 'unknown'}] Missing API key in request headers`);
+    return res.status(401).json({
+      error: 'API key required',
+      message: 'Please provide your API key in the X-API-Key header'
+    });
+  }
+
+  if (providedKey !== API_KEY) {
+    console.log(`❌ [${req.id || 'unknown'}] Invalid API key provided`);
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+
+  console.log(`✅ [${req.id || 'unknown'}] API key validated successfully`);
+  next();
+};
+
+/**
+ * Health check endpoint
+ * Simple endpoint to verify server is running
+ */
+app.get('/healthz', (req, res) => {
+  res.json({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    endpoints: ['/overlay', '/2slidesReel', '/healthz']
+  });
+});
+
+/**
+ * 2 Slides Reel endpoint (placeholder for future implementation)
+ * 
+ * This endpoint will create Instagram reels with two slides
+ * 
+ * POST /2slidesReel
+ * 
+ * Expected payload:
+ * - slide1: { image: string, title: string, source: string }
+ * - slide2: { image: string, title: string, source: string }
+ * - duration: number (seconds per slide, default: 3)
+ * - transition: string (transition type, default: 'fade')
+ * 
+ * Returns:
+ * - Video file URL or processing status
+ */
+app.post('/2slidesReel', validateApiKey, async (req, res) => {
+  const requestId = Math.random().toString(36).substr(2, 9);
+  const startTime = Date.now();
+
+  console.log(`🎬 [${requestId}] 2slidesReel request started`);
+  console.log(`📋 [${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+
+  try {
+    // TODO: Implement 2slidesReel functionality
+    // This is a placeholder for future implementation
+
+    const { slide1, slide2, duration = 3, transition = 'fade' } = req.body;
+
+    // Validate required fields
+    if (!slide1 || !slide2) {
+      console.log(`❌ [${requestId}] Missing required slides data`);
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'Both slide1 and slide2 are required'
+      });
+    }
+
+    if (!slide1.image || !slide2.image) {
+      console.log(`❌ [${requestId}] Missing image URLs`);
+      return res.status(400).json({
+        error: 'Missing image URLs',
+        message: 'Both slides must have image URLs'
+      });
+    }
+
+    // For now, return a placeholder response
+    console.log(`🚧 [${requestId}] 2slidesReel endpoint not yet implemented`);
+
+    const totalTime = Date.now() - startTime;
+    res.status(501).json({
+      error: 'Not implemented',
+      message: '2slidesReel endpoint is under development',
+      requestId,
+      processingTime: totalTime,
+      expectedFeatures: [
+        'Two-slide Instagram reel generation',
+        'Customizable slide duration',
+        'Transition effects',
+        'Background music support',
+        'Text overlay on each slide'
+      ]
+    });
+
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    console.log(`💥 [${requestId}] 2slidesReel request failed after ${totalTime}ms:`, error.message);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+      requestId
+    });
+  }
+});
 
 /**
  * Generates SVG overlay with centered title text and source attribution
@@ -200,45 +369,6 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
     ${esc(source)}
   </text>
 </svg>`;
-};
-
-/**
- * API Key Validation Middleware
- * 
- * Validates the API key from the X-API-Key header if API key validation is enabled.
- * This provides basic security for the overlay service.
- * 
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object  
- * @param {Function} next - Express next middleware function
- */
-const validateApiKey = (req, res, next) => {
-  // Skip validation if API key requirement is disabled
-  if (!REQUIRE_API_KEY) {
-    return next();
-  }
-
-  // Extract API key from X-API-Key header
-  const providedKey = req.headers['x-api-key'];
-
-  if (!providedKey) {
-    console.log(`❌ [${req.id || 'unknown'}] Missing API key in request headers`);
-    return res.status(401).json({
-      error: 'API key required',
-      message: 'Please provide your API key in the X-API-Key header'
-    });
-  }
-
-  if (providedKey !== API_KEY) {
-    console.log(`❌ [${req.id || 'unknown'}] Invalid API key provided`);
-    return res.status(403).json({
-      error: 'Invalid API key',
-      message: 'The provided API key is not valid'
-    });
-  }
-
-  console.log(`✅ [${req.id || 'unknown'}] API key validated successfully`);
-  next();
 };
 
 /**
@@ -437,6 +567,18 @@ app.listen(PORT, () => {
   if (REQUIRE_API_KEY) {
     console.log(`🔑 API Key: ${API_KEY.substring(0, 8)}... (use X-API-Key header)`);
   }
+  console.log(`🌐 Base URL: ${BASE_URL}`);
+  console.log(`📁 Media directory: ${MEDIA_DIR}`);
+  console.log(`🎬 Reels directory: ${REELS_DIR}`);
+  console.log(`📂 Temp directory: ${TMP_DIR}`);
+  console.log(`🎨 Background directory: ${BG_DIR}`);
+  console.log('');
+  console.log('📋 Available endpoints:');
+  console.log(`   GET  /healthz - Health check`);
+  console.log(`   GET  /overlay - Image overlay generation`);
+  console.log(`   POST /2slidesReel - Two-slide reel generation (under development)`);
+  console.log(`   GET  /media/* - Static media files`);
+  console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
   console.log(`📝 Example: http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test&logo=true`);
   if (REQUIRE_API_KEY) {

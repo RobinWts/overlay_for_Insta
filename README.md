@@ -183,6 +183,11 @@ EOF
 - `API_KEY`: Your secret API key (required for all requests)
 - `REQUIRE_API_KEY`: Set to `false` to disable API key validation (not recommended for production)
 - `PORT`: Server port (default: 8080)
+- `BASE_URL`: Base URL for the server (default: http://localhost:8080)
+- `MEDIA_DIR`: Media directory path (default: ./media)
+- `REELS_SUBDIR`: Reels subdirectory (default: reels)
+- `TMP_SUBDIR`: Temporary files subdirectory (default: tmp)
+- `BG_DIR`: Background assets directory (default: ./assets/reels_bg)
 
 **Security Notes:**
 - Generate a strong, random API key for production use:
@@ -198,13 +203,22 @@ EOF
 
 ### API Usage
 
-The server provides a single endpoint for image overlay generation with API key security:
+The server provides multiple endpoints for image processing and reel generation with API key security:
+
+#### Available Endpoints
+
+- `GET /healthz` - Health check (no API key required)
+- `GET /overlay` - Image overlay generation
+- `POST /2slidesReel` - Two-slide Instagram reel generation (under development)
+- `GET /media/*` - Static media file serving
+
+**Security**: All endpoints except `/healthz` require a valid API key in the `X-API-Key` header.
+
+#### Image Overlay Endpoint
 
 ```
 GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
 ```
-
-**Security**: All requests require a valid API key in the `X-API-Key` header.
 
 #### Parameters
 
@@ -246,6 +260,61 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://exa
 **Full customization:**
 ```bash
 curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
+```
+
+#### Two-Slide Reel Endpoint (Under Development)
+
+```
+POST /2slidesReel
+```
+
+**Request Body:**
+```json
+{
+  "slide1": {
+    "image": "https://example.com/slide1.jpg",
+    "title": "First Slide Title",
+    "source": "@username1"
+  },
+  "slide2": {
+    "image": "https://example.com/slide2.jpg", 
+    "title": "Second Slide Title",
+    "source": "@username2"
+  },
+  "duration": 3,
+  "transition": "fade"
+}
+```
+
+**Parameters:**
+- `slide1` (required): First slide data with image, title, and source
+- `slide2` (required): Second slide data with image, title, and source
+- `duration` (optional): Duration per slide in seconds (default: 3)
+- `transition` (optional): Transition type between slides (default: "fade")
+
+**Example:**
+```bash
+curl -X POST -H "Content-Type: application/json" -H "X-API-Key: your-api-key" \
+  -d '{"slide1":{"image":"https://example.com/slide1.jpg","title":"First Slide","source":"@user1"},"slide2":{"image":"https://example.com/slide2.jpg","title":"Second Slide","source":"@user2"}}' \
+  http://localhost:8080/2slidesReel
+```
+
+**Note:** This endpoint is currently under development and returns a 501 Not Implemented status.
+
+#### Health Check Endpoint
+
+```
+GET /healthz
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "version": "1.0.0",
+  "endpoints": ["/overlay", "/2slidesReel", "/healthz"]
+}
 ```
 
 ## Development
