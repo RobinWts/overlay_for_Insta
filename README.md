@@ -156,13 +156,55 @@ services:
    npm test
    ```
 
+### API Key Configuration
+
+The server uses API key authentication for security. Copy the example environment file and customize it:
+
+```bash
+# Copy the example environment file
+cp env.example .env
+
+# Edit the .env file with your values
+nano .env
+```
+
+Or create the `.env` file manually:
+
+```bash
+# Create .env file
+cat > .env << EOF
+PORT=8080
+API_KEY=your-secure-api-key-here-change-this-in-production
+REQUIRE_API_KEY=true
+EOF
+```
+
+**Environment Variables:**
+- `API_KEY`: Your secret API key (required for all requests)
+- `REQUIRE_API_KEY`: Set to `false` to disable API key validation (not recommended for production)
+- `PORT`: Server port (default: 8080)
+
+**Security Notes:**
+- Generate a strong, random API key for production use:
+  ```bash
+  # Generate a secure 32-character hex key
+  openssl rand -hex 32
+  
+  # Or generate a 64-character base64 key
+  openssl rand -base64 48
+  ```
+- Never commit your `.env` file to version control
+- The API key must be provided in the `X-API-Key` header for all requests
+
 ### API Usage
 
-The server provides a single endpoint for image overlay generation:
+The server provides a single endpoint for image overlay generation with API key security:
 
 ```
 GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
 ```
+
+**Security**: All requests require a valid API key in the `X-API-Key` header.
 
 #### Parameters
 
@@ -178,32 +220,32 @@ GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&
 
 **Basic usage (uses all defaults):**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg" -o output.jpg
 ```
 
 **With custom text and dimensions:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Awesome%20Post&source=@username&w=1080&h=1350" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Awesome%20Post&source=@username&w=1080&h=1350" -o output.jpg
 ```
 
 **With custom max lines:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very%20long%20title%20text&maxLines=3" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very%20long%20title%20text&maxLines=3" -o output.jpg
 ```
 
 **Single line title:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
 ```
 
 **With logo overlay:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Post&logo=true" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Post&logo=true" -o output.jpg
 ```
 
 **Full customization:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
 ```
 
 ## Development
@@ -276,6 +318,15 @@ The Dockerfile is optimized for production with:
 - Health checks
 - Minimal dependencies
 - Proper caching layers
+
+**Environment Variables for Docker:**
+```bash
+# Run with custom API key
+docker run -p 8080:8080 -e API_KEY=your-secure-api-key overlay-image
+
+# Run with API key validation disabled (not recommended)
+docker run -p 8080:8080 -e REQUIRE_API_KEY=false overlay-image
+```
 
 ## Text Overlay Features
 

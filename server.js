@@ -15,12 +15,20 @@
 import express from 'express';
 import sharp from 'sharp';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Initialize Express application
 const app = express();
 
 // Set port from environment variable or default to 8080
 const PORT = process.env.PORT || 8080;
+
+// API Security Configuration
+const API_KEY = process.env.API_KEY || 'default-api-key-change-in-production';
+const REQUIRE_API_KEY = process.env.REQUIRE_API_KEY !== 'false'; // Default to true unless explicitly disabled
 
 /**
  * Generates SVG overlay with centered title text and source attribution
@@ -193,6 +201,46 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
   </text>
 </svg>`;
 };
+
+/**
+ * API Key Validation Middleware
+ * 
+ * Validates the API key from the X-API-Key header if API key validation is enabled.
+ * This provides basic security for the overlay service.
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object  
+ * @param {Function} next - Express next middleware function
+ */
+const validateApiKey = (req, res, next) => {
+  // Skip validation if API key requirement is disabled
+  if (!REQUIRE_API_KEY) {
+    return next();
+  }
+
+  // Extract API key from X-API-Key header
+  const providedKey = req.headers['x-api-key'];
+
+  if (!providedKey) {
+    console.log(`❌ [${req.id || 'unknown'}] Missing API key in request headers`);
+    return res.status(401).json({
+      error: 'API key required',
+      message: 'Please provide your API key in the X-API-Key header'
+    });
+  }
+
+  if (providedKey !== API_KEY) {
+    console.log(`❌ [${req.id || 'unknown'}] Invalid API key provided`);
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+
+  console.log(`✅ [${req.id || 'unknown'}] API key validated successfully`);
+  next();
+};
+
 /**
  * Main API endpoint for image overlay generation
  * 
@@ -214,7 +262,7 @@ const makeSvg = (w, h, rawTitle, rawSource, maxLines = 5) => {
  * 4. Adding logo overlay if requested
  * 5. Returning the final image as JPEG
  */
-app.get('/overlay', async (req, res) => {
+app.get('/overlay', validateApiKey, async (req, res) => {
   const requestId = Math.random().toString(36).substr(2, 9); // Generate unique request ID
   const startTime = Date.now();
 
@@ -385,8 +433,15 @@ app.listen(PORT, () => {
   console.log('🚀 Overlay Image Server Started');
   console.log('='.repeat(60));
   console.log(`📡 Server running on port: ${PORT}`);
+  console.log(`🔐 API Key validation: ${REQUIRE_API_KEY ? 'ENABLED' : 'DISABLED'}`);
+  if (REQUIRE_API_KEY) {
+    console.log(`🔑 API Key: ${API_KEY.substring(0, 8)}... (use X-API-Key header)`);
+  }
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
   console.log(`📝 Example: http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test&logo=true`);
+  if (REQUIRE_API_KEY) {
+    console.log(`🔑 With API key: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test"`);
+  }
   console.log('='.repeat(60));
   console.log('📊 Monitoring enabled - all requests will be logged');
   console.log('⏹️  Press Ctrl+C to stop the server');

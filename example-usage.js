@@ -5,8 +5,13 @@
 
 import fetch from 'node-fetch';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const SERVER_URL = 'http://localhost:8080';
+const API_KEY = process.env.API_KEY || 'default-api-key-change-in-production';
 
 /**
  * Generate an overlay image and save it to disk
@@ -34,7 +39,9 @@ async function generateOverlayImage(imageUrl, title, source, width, height, outp
 
         console.log(`   Request URL: ${url.toString()}`);
 
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), {
+            headers: { 'X-API-Key': API_KEY }
+        });
 
         if (!response.ok) {
             const error = await response.text();
