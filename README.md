@@ -265,38 +265,39 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://exa
 #### Two-Slide Reel Endpoint (Under Development)
 
 ```
-POST /2slidesReel
-```
-
-**Request Body:**
-```json
-{
-  "slide1": {
-    "image": "https://example.com/slide1.jpg",
-    "title": "First Slide Title",
-    "source": "@username1"
-  },
-  "slide2": {
-    "image": "https://example.com/slide2.jpg", 
-    "title": "Second Slide Title",
-    "source": "@username2"
-  },
-  "duration": 3,
-  "transition": "fade"
-}
+GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
 ```
 
 **Parameters:**
-- `slide1` (required): First slide data with image, title, and source
-- `slide2` (required): Second slide data with image, title, and source
-- `duration` (optional): Duration per slide in seconds (default: 3)
+- `slide1` (required): URL of the first slide image
+- `slide2` (required): URL of the second slide image
+- `title1` (optional): Overlay text for first slide (default: empty)
+- `title2` (optional): Overlay text for second slide (default: empty)
+- `duration1` (optional): Duration of first slide in seconds (default: 4)
+- `duration2` (optional): Duration of second slide in seconds (default: 4)
 - `transition` (optional): Transition type between slides (default: "fade")
 
-**Example:**
+**Valid transition types:**
+- `fade` - Fade between slides
+- `slide` - Slide transition
+- `dissolve` - Dissolve effect
+- `wipe` - Wipe transition
+
+**Examples:**
+
+**Basic usage (minimal parameters):**
 ```bash
-curl -X POST -H "Content-Type: application/json" -H "X-API-Key: your-api-key" \
-  -d '{"slide1":{"image":"https://example.com/slide1.jpg","title":"First Slide","source":"@user1"},"slide2":{"image":"https://example.com/slide2.jpg","title":"Second Slide","source":"@user2"}}' \
-  http://localhost:8080/2slidesReel
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg"
+```
+
+**With titles and custom durations:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg&title1=First%20Slide&title2=Second%20Slide&duration1=3&duration2=5"
+```
+
+**With custom transition:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg&transition=slide"
 ```
 
 **Note:** This endpoint is currently under development and returns a 501 Not Implemented status.

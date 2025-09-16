@@ -129,48 +129,82 @@ app.get('/healthz', (req, res) => {
  * 
  * This endpoint will create Instagram reels with two slides
  * 
- * POST /2slidesReel
+ * GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
  * 
- * Expected payload:
- * - slide1: { image: string, title: string, source: string }
- * - slide2: { image: string, title: string, source: string }
- * - duration: number (seconds per slide, default: 3)
- * - transition: string (transition type, default: 'fade')
+ * Parameters:
+ * - slide1 (required): URL of the first slide image
+ * - slide2 (required): URL of the second slide image
+ * - title1 (optional): Overlay text for first slide (default: empty)
+ * - title2 (optional): Overlay text for second slide (default: empty)
+ * - duration1 (optional): Duration of first slide in seconds (default: 4)
+ * - duration2 (optional): Duration of second slide in seconds (default: 4)
+ * - transition (optional): Transition type between slides (default: 'fade')
  * 
  * Returns:
  * - Video file URL or processing status
  */
-app.post('/2slidesReel', validateApiKey, async (req, res) => {
+app.get('/2slidesReel', validateApiKey, async (req, res) => {
   const requestId = Math.random().toString(36).substr(2, 9);
   const startTime = Date.now();
 
   console.log(`🎬 [${requestId}] 2slidesReel request started`);
-  console.log(`📋 [${requestId}] Request body:`, JSON.stringify(req.body, null, 2));
+  console.log(`📋 [${requestId}] Request parameters:`, {
+    slide1: req.query.slide1 ? 'provided' : 'missing',
+    slide2: req.query.slide2 ? 'provided' : 'missing',
+    title1: req.query.title1 ? `"${req.query.title1.substring(0, 50)}${req.query.title1.length > 50 ? '...' : ''}"` : 'none',
+    title2: req.query.title2 ? `"${req.query.title2.substring(0, 50)}${req.query.title2.length > 50 ? '...' : ''}"` : 'none',
+    duration1: req.query.duration1 || 'default (4)',
+    duration2: req.query.duration2 || 'default (4)',
+    transition: req.query.transition || 'default (fade)'
+  });
 
   try {
-    // TODO: Implement 2slidesReel functionality
+    // === PARAMETER EXTRACTION AND VALIDATION ===
+
+    // Extract and validate required image URLs
+    const slide1 = req.query.slide1;
+    const slide2 = req.query.slide2;
+
+    if (!slide1) {
+      console.log(`❌ [${requestId}] Missing required parameter: slide1`);
+      return res.status(400).json({ error: 'slide1 required' });
+    }
+
+    if (!slide2) {
+      console.log(`❌ [${requestId}] Missing required parameter: slide2`);
+      return res.status(400).json({ error: 'slide2 required' });
+    }
+
+    // Extract optional parameters with defaults
+    const title1 = req.query.title1 || '';
+    const title2 = req.query.title2 || '';
+    const duration1 = Number(req.query.duration1 || 4);
+    const duration2 = Number(req.query.duration2 || 4);
+    const transition = req.query.transition || 'fade';
+
+    // Validate durations are reasonable
+    if (duration1 < 1 || duration1 > 30 || duration2 < 1 || duration2 > 30) {
+      console.log(`❌ [${requestId}] Invalid durations: ${duration1}s, ${duration2}s`);
+      return res.status(400).json({
+        error: 'Invalid durations. Duration must be between 1 and 30 seconds.'
+      });
+    }
+
+    // Validate transition type
+    const validTransitions = ['fade', 'slide', 'dissolve', 'wipe'];
+    if (!validTransitions.includes(transition)) {
+      console.log(`❌ [${requestId}] Invalid transition: ${transition}`);
+      return res.status(400).json({
+        error: 'Invalid transition. Must be one of: ' + validTransitions.join(', ')
+      });
+    }
+
+    console.log(`✅ [${requestId}] Parameters validated successfully`);
+    console.log(`📐 [${requestId}] Processing reel: slide1=${duration1}s, slide2=${duration2}s, transition=${transition}`);
+
+    // TODO: Implement actual reel generation
     // This is a placeholder for future implementation
 
-    const { slide1, slide2, duration = 3, transition = 'fade' } = req.body;
-
-    // Validate required fields
-    if (!slide1 || !slide2) {
-      console.log(`❌ [${requestId}] Missing required slides data`);
-      return res.status(400).json({
-        error: 'Missing required fields',
-        message: 'Both slide1 and slide2 are required'
-      });
-    }
-
-    if (!slide1.image || !slide2.image) {
-      console.log(`❌ [${requestId}] Missing image URLs`);
-      return res.status(400).json({
-        error: 'Missing image URLs',
-        message: 'Both slides must have image URLs'
-      });
-    }
-
-    // For now, return a placeholder response
     console.log(`🚧 [${requestId}] 2slidesReel endpoint not yet implemented`);
 
     const totalTime = Date.now() - startTime;
@@ -179,12 +213,21 @@ app.post('/2slidesReel', validateApiKey, async (req, res) => {
       message: '2slidesReel endpoint is under development',
       requestId,
       processingTime: totalTime,
+      parameters: {
+        slide1,
+        slide2,
+        title1,
+        title2,
+        duration1,
+        duration2,
+        transition
+      },
       expectedFeatures: [
         'Two-slide Instagram reel generation',
-        'Customizable slide duration',
-        'Transition effects',
-        'Background music support',
-        'Text overlay on each slide'
+        'Customizable slide duration per slide',
+        'Multiple transition effects',
+        'Text overlay on each slide',
+        'Video output in MP4 format'
       ]
     });
 
@@ -576,7 +619,7 @@ app.listen(PORT, () => {
   console.log('📋 Available endpoints:');
   console.log(`   GET  /healthz - Health check`);
   console.log(`   GET  /overlay - Image overlay generation`);
-  console.log(`   POST /2slidesReel - Two-slide reel generation (under development)`);
+  console.log(`   GET  /2slidesReel - Two-slide reel generation (under development)`);
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);

@@ -74,45 +74,58 @@ async function test2SlidesReelEndpoint() {
 
     const testCases = [
         {
-            name: 'Valid 2slidesReel request',
-            payload: {
-                slide1: {
-                    image: 'https://picsum.photos/1080/1920?random=1',
-                    title: 'First Slide Title',
-                    source: '@user1'
-                },
-                slide2: {
-                    image: 'https://picsum.photos/1080/1920?random=2',
-                    title: 'Second Slide Title',
-                    source: '@user2'
-                },
-                duration: 3,
+            name: 'Valid 2slidesReel request with all parameters',
+            params: {
+                slide1: 'https://picsum.photos/1080/1920?random=1',
+                slide2: 'https://picsum.photos/1080/1920?random=2',
+                title1: 'First Slide Title',
+                title2: 'Second Slide Title',
+                duration1: 3,
+                duration2: 5,
                 transition: 'fade'
             },
             shouldSucceed: false // Currently returns 501 Not Implemented
         },
         {
-            name: 'Missing slide1 data',
-            payload: {
-                slide2: {
-                    image: 'https://picsum.photos/1080/1920?random=2',
-                    title: 'Second Slide Title',
-                    source: '@user2'
-                }
+            name: 'Valid 2slidesReel request with minimal parameters',
+            params: {
+                slide1: 'https://picsum.photos/1080/1920?random=3',
+                slide2: 'https://picsum.photos/1080/1920?random=4'
+            },
+            shouldSucceed: false // Currently returns 501 Not Implemented
+        },
+        {
+            name: 'Missing slide1 parameter',
+            params: {
+                slide2: 'https://picsum.photos/1080/1920?random=5',
+                title2: 'Second Slide Only'
             },
             shouldSucceed: false
         },
         {
-            name: 'Missing image URLs',
-            payload: {
-                slide1: {
-                    title: 'First Slide Title',
-                    source: '@user1'
-                },
-                slide2: {
-                    title: 'Second Slide Title',
-                    source: '@user2'
-                }
+            name: 'Missing slide2 parameter',
+            params: {
+                slide1: 'https://picsum.photos/1080/1920?random=6',
+                title1: 'First Slide Only'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid duration (too long)',
+            params: {
+                slide1: 'https://picsum.photos/1080/1920?random=7',
+                slide2: 'https://picsum.photos/1080/1920?random=8',
+                duration1: 60,
+                duration2: 4
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid transition type',
+            params: {
+                slide1: 'https://picsum.photos/1080/1920?random=9',
+                slide2: 'https://picsum.photos/1080/1920?random=10',
+                transition: 'invalid_transition'
             },
             shouldSucceed: false
         }
@@ -122,13 +135,15 @@ async function test2SlidesReelEndpoint() {
         console.log(`📋 ${testCase.name}`);
 
         try {
-            const response = await fetch(`${BASE_URL}/2slidesReel`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': API_KEY
-                },
-                body: JSON.stringify(testCase.payload)
+            const url = new URL('/2slidesReel', BASE_URL);
+            Object.entries(testCase.params).forEach(([key, value]) => {
+                url.searchParams.set(key, value);
+            });
+
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                headers: { 'X-API-Key': API_KEY }
             });
 
             const responseData = await response.json();
@@ -137,6 +152,8 @@ async function test2SlidesReelEndpoint() {
                 console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
             } else if (!testCase.shouldSucceed && !response.ok) {
                 console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else if (!testCase.shouldSucceed && response.status === 501) {
+                console.log(`   ✅ Expected 501 Not Implemented: ${responseData.message}`);
             } else {
                 console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
             }
