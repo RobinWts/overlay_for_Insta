@@ -408,16 +408,16 @@ async function generateTextOverlay(text, outputPath, requestId) {
 function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, duration1, duration2, transition, outputPath, requestId }) {
   const command = [
     '-y', // Overwrite output file
-    '-loop', '1', '-i', slide1Path,
-    '-loop', '1', '-i', slide2Path
+    '-loop', '1', '-framerate', '30', '-i', slide1Path,
+    '-loop', '1', '-framerate', '30', '-i', slide2Path
   ];
 
   // Add text overlay inputs if they exist
   if (title1Path) {
-    command.push('-loop', '1', '-i', title1Path);
+    command.push('-loop', '1', '-framerate', '30', '-i', title1Path);
   }
   if (title2Path) {
-    command.push('-loop', '1', '-i', title2Path);
+    command.push('-loop', '1', '-framerate', '30', '-i', title2Path);
   }
 
   // Build filter complex
@@ -441,43 +441,62 @@ function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, du
 }
 
 /**
- * Builds FFmpeg filter complex for video generation
+ * Builds FFmpeg filter complex for video generation with Ken Burns effect
  * 
  * @param {Object} params - Filter parameters
  * @returns {string} Filter complex string
  */
 function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transition, requestId }) {
-  console.log(`🎬 [${requestId}] Building filter complex...`);
+  console.log(`🎬 [${requestId}] Building filter complex with Ken Burns effect...`);
 
-  // Input indices: 0=slide1, 1=slide2, 2=title1 (if exists), 3=title2 (if exists)
-  let inputIndex = 0;
-  const slide1Index = inputIndex++;
-  const slide2Index = inputIndex++;
-  const title1Index = hasTitle1 ? inputIndex++ : -1;
-  const title2Index = hasTitle2 ? inputIndex++ : -1;
+  // Eingänge: 0=slide1, 1=slide2, 2=title1?, 3=title2?
+  let idx = 0;
+  const s1 = idx++;
+  const s2 = idx++;
+  const t1 = hasTitle1 ? idx++ : -1;
+  const t2 = hasTitle2 ? idx++ : -1;
 
-  // Process slide1 with Ken Burns effect (smooth zoom + diagonal pan from top-left to bottom-right)
-  let filters = `[${slide1Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration1 * 30}:x='iw/2-(iw/zoom/2)+on*2':y='ih/2-(ih/zoom/2)+on*1.2':s=1080x1920[v1]`;
+  // Frames je Slide bei 30 fps
+  const D1 = Math.max(1, Math.round(duration1 * 30));
+  const D2 = Math.max(1, Math.round(duration2 * 30));
 
-  // Process slide2 with Ken Burns effect (smooth zoom + diagonal pan from bottom-right to top-left)
-  filters += `;[${slide2Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration2 * 30}:x='iw/2-(iw/zoom/2)-on*2.5':y='ih/2-(ih/zoom/2)-on*1.5':s=1080x1920[v2]`;
+  // Ken Burns effect optimized for smooth scrolling
+  // Key improvements:
+  // 1. Upscale first to minimize rounding errors (8x resolution)
+  // 2. Use smoother pan expressions with proper easing
+  // 3. Better zoom increment for visible but smooth motion
+  // 4. Ensure consistent frame timing
 
-  // Add text overlays if they exist (positioned in center safe zone - 1080x1080 area)
+  const upscaleW = 8640; // 8x width for smooth calculations
+  const upscaleH = 15360; // 8x height for smooth calculations
+
+  let filters = [
+    // Slide 1 - Smooth Ken Burns with upscaling to reduce jitter
+    `[${s1}:v]scale=${upscaleW}:${upscaleH}:force_original_aspect_ratio=increase,crop=${upscaleW}:${upscaleH},` +
+    `zoompan=z='min(1.0+0.002*on,1.2)':d=${D1}:x='iw/2-(iw/zoom/2)+(iw-ow/zoom)*on/${D1 - 1}':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,format=yuv420p[v1]`,
+
+    // Slide 2 - Smooth Ken Burns with reverse pan direction
+    `[${s2}:v]scale=${upscaleW}:${upscaleH}:force_original_aspect_ratio=increase,crop=${upscaleW}:${upscaleH},` +
+    `zoompan=z='min(1.0+0.002*on,1.2)':d=${D2}:x='iw/2-(iw/zoom/2)+(iw-ow/zoom)*(1-on/${D2 - 1})':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,format=yuv420p[v2]`,
+  ].join(";");
+
+  // Text-Overlays (PNG/SVG sollten 1080x1920 oder transparenten Canvas haben)
+  const v1Final = hasTitle1 ? "v1_txt" : "v1";
+  const v2Final = hasTitle2 ? "v2_txt" : "v2";
+
   if (hasTitle1) {
-    filters += `;[v1][${title1Index}:v]overlay=0:810[v1_with_text]`; // Center vertically in safe zone
+    // Position: mittlere Safe-Zone (hier Beispiel: y=810). Passe gern an.
+    filters += `;[v1][${t1}:v]overlay=x=(W-w)/2:y=810:eval=init[v1_txt]`;
   }
   if (hasTitle2) {
-    filters += `;[v2][${title2Index}:v]overlay=0:810[v2_with_text]`; // Center vertically in safe zone
+    filters += `;[v2][${t2}:v]overlay=x=(W-w)/2:y=810:eval=init[v2_txt]`;
   }
 
-  // Apply transition between slides
-  const v1Final = hasTitle1 ? 'v1_with_text' : 'v1';
-  const v2Final = hasTitle2 ? 'v2_with_text' : 'v2';
-  const transitionOffset = duration1 - 1; // 1 second transition
+  // Crossfade exakt nach duration1-1s
+  const xfadeOffset = Math.max(0, duration1 - 1); // Sekunden
+  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=1:offset=${xfadeOffset},format=yuv420p[vfinal]`;
 
-  // Use fade transition (most reliable across FFmpeg versions)
-  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=1:offset=${transitionOffset}[vfinal]`;
-
+  console.log(`✅ [${requestId}] Ken Burns filter complex built successfully`);
   return filters;
 }
 
