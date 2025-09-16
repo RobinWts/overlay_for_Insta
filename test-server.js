@@ -84,7 +84,7 @@ async function test2SlidesReelEndpoint() {
                 duration2: 5,
                 transition: 'fade'
             },
-            shouldSucceed: false // Currently returns 501 Not Implemented
+            shouldSucceed: true // Now implemented!
         },
         {
             name: 'Valid 2slidesReel request with minimal parameters',
@@ -92,7 +92,7 @@ async function test2SlidesReelEndpoint() {
                 slide1: 'https://picsum.photos/1080/1920?random=3',
                 slide2: 'https://picsum.photos/1080/1920?random=4'
             },
-            shouldSucceed: false // Currently returns 501 Not Implemented
+            shouldSucceed: true // Now implemented!
         },
         {
             name: 'Missing slide1 parameter',

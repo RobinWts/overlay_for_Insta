@@ -57,7 +57,10 @@ GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1
 - `duration2` (optional): Duration of second slide in seconds, default 4
 - `transition` (optional): Transition type (fade, slide, dissolve, wipe), default fade
 
-**Response**: Video file URL or processing status
+**Response**: This function generates a 1080×1920 video with a central 1080×1080 safe zone. Inside this zone, the overlay displays the texts provided via title1 and title2. Below the text, the corresponding image is shown with an adapted Ken Burns effect:
+	•	Square or portrait images: gentle panning with a stronger zoom, adjusted to fit the format.
+	•	Landscape images: subtle zoom combined with a smooth pan across the frame.
+The resulting video is stored locally and made available for download in the directory defined by REELS_SUBDIR.
 
 #### Health Check Endpoint
 ```

@@ -209,7 +209,7 @@ The server provides multiple endpoints for image processing and reel generation 
 
 - `GET /healthz` - Health check (no API key required)
 - `GET /overlay` - Image overlay generation
-- `POST /2slidesReel` - Two-slide Instagram reel generation (under development)
+- `GET /2slidesReel` - Two-slide Instagram reel generation
 - `GET /media/*` - Static media file serving
 
 **Security**: All endpoints except `/healthz` require a valid API key in the `X-API-Key` header.
@@ -300,7 +300,7 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=http
 curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg&transition=slide"
 ```
 
-**Note:** This endpoint is currently under development and returns a 501 Not Implemented status.
+**Response:** Returns a JSON object with the video URL and processing information.
 
 #### Health Check Endpoint
 
