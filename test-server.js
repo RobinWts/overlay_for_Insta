@@ -79,9 +79,9 @@ async function test2SlidesReelEndpoint() {
                 slide1: 'https://picsum.photos/1080/1350?random=1',
                 slide2: 'https://picsum.photos/1920/1080?random=2',
                 title1: 'First Slide Title this is the first test video. This is a Instagram image.',
-                title2: 'Second Slide Title this is the first test video. This is a landscape image.',
-                duration1: 3,
-                duration2: 5,
+                title2: 'Second Slide Title this is the first test video. This is a landscape image. And much more text to display on the second slide.',
+                duration1: 5,
+                duration2: 7,
                 transition: 'fade'
             },
             shouldSucceed: true // Now implemented!
@@ -89,8 +89,8 @@ async function test2SlidesReelEndpoint() {
         {
             name: 'Valid 2slidesReel request with minimal parameters',
             params: {
-                slide1: 'https://picsum.photos/400/400?random=3',
-                slide2: 'https://picsum.photos/1080/1080?random=4'
+                slide1: 'https://picsum.photos/1024/1024?random=3',
+                slide2: 'https://picsum.photos/1024/1024?random=4'
             },
             shouldSucceed: true // Now implemented!
         },

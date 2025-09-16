@@ -386,21 +386,9 @@ async function downloadImage(imageUrl, outputPath, requestId) {
 async function generateTextOverlay(text, outputPath, requestId) {
   console.log(`🎨 [${requestId}] Generating text overlay: "${text}"`);
 
-  // Create a video-optimized text overlay with semi-transparent background
-  const svg = `
-<svg width="1080" height="200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Semi-transparent background for text readability -->
-  <rect x="0" y="0" width="1080" height="200" fill="#000" fill-opacity="0.6"/>
-  
-  <!-- Text content using the same styling as overlay endpoint -->
-  <g font-family="Inter, -apple-system, Segoe UI, Roboto, Arial"
-     font-weight="800"
-     font-size="48"
-     text-anchor="middle"
-     style="fill:#fff; stroke:#000; stroke-width:3px; paint-order:stroke fill;">
-    <text x="540" y="120">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
-  </g>
-</svg>`;
+  // Use the same makeSvg function but with video-optimized dimensions for safe zone
+  // 1080x300 for center safe zone of 1080x1920 video (positioned in center 1080x1080 area)
+  const svg = makeSvg(1080, 1080, text, '', 7); // 7 lines max for video
 
   // Convert SVG to PNG using Sharp
   const pngBuffer = await sharp(Buffer.from(svg))
@@ -474,12 +462,12 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
   // Process slide2 with Ken Burns effect (smooth zoom + diagonal pan from bottom-right to top-left)
   filters += `;[${slide2Index}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.001,1.3)':d=${duration2 * 30}:x='iw/2-(iw/zoom/2)-on*2.5':y='ih/2-(ih/zoom/2)-on*1.5':s=1080x1920[v2]`;
 
-  // Add text overlays if they exist (positioned in safe zone - center 1080x1080 area)
+  // Add text overlays if they exist (positioned in center safe zone - 1080x1080 area)
   if (hasTitle1) {
-    filters += `;[v1][${title1Index}:v]overlay=0:0[v1_with_text]`;
+    filters += `;[v1][${title1Index}:v]overlay=0:810[v1_with_text]`; // Center vertically in safe zone
   }
   if (hasTitle2) {
-    filters += `;[v2][${title2Index}:v]overlay=0:0[v2_with_text]`;
+    filters += `;[v2][${title2Index}:v]overlay=0:810[v2_with_text]`; // Center vertically in safe zone
   }
 
   // Apply transition between slides
