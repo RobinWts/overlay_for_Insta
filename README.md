@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     command:
       - "--configfile=/traefik/traefik.yml"
-      - "--certificatesresolvers.le-http.acme.email=your-email@example.com"
+      - "--certificatesresolvers.le-http.acme.email=robin@glavegbr.de"
     ports:
       - "80:80"
       - "443:443"
@@ -116,9 +116,14 @@ services:
     container_name: overlay
     restart: unless-stopped
     environment:
-      - OVERLAY_DOMAIN=${OVERLAY_DOMAIN:-overlay.localhost}
-      - OVERLAY_API_KEY=${OVERLAY_API_KEY:-default-api-key-change-in-production}
-      - OVERLAY_REQUIRE_API_KEY=${OVERLAY_REQUIRE_API_KEY:-true}
+      - OVERLAY_DOMAIN
+      - OVERLAY_API_KEY
+      - OVERLAY_REQUIRE_API_KEY
+      - OVERLAY_PORT
+      - OVERLAY_MEDIA_DIR
+      - OVERLAY_REELS_SUBDIR
+      - OVERLAY_TMP_SUBDIR
+      - OVERLAY_BG_DIR
     volumes:
       - overlay_media:/app/media
     networks:
@@ -130,7 +135,7 @@ services:
       traefik.http.routers.overlay-media.tls.certresolver: "le-http"
       traefik.http.services.overlay-media.loadbalancer.server.port: "8080"
       traefik.http.routers.overlay-media.middlewares: "securityHeaders@file"
-      com.centurylinklabs.watchtower.enable: "false"
+      com.centurylinklabs.watchtower.enable: "false"      
 ```
 
 ## Features
@@ -142,6 +147,7 @@ services:
 - ⚡ **High Performance**: Built with Sharp for fast image processing
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
+- 🎬 **Two-Slide Reels**: Generate 1080×1920 videos with Ken Burns and smooth transitions
 
 ## Quick Start
 
@@ -150,6 +156,7 @@ services:
 - Node.js >= 20.3.0 (required for Sharp compatibility)
 - npm or yarn
 - Docker (optional, for containerized deployment)
+- ffmpeg (required for video reel generation)
 
 ### Development Setup
 
@@ -276,7 +283,7 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://exa
 curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
 ```
 
-#### Two-Slide Reel Endpoint (Under Development)
+#### Two-Slide Reel Endpoint
 
 ```
 GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
@@ -296,6 +303,11 @@ GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1
 - `slide` - Slide transition
 - `dissolve` - Dissolve effect
 - `wipe` - Wipe transition
+
+**Notes:**
+- Titles are rendered in a centered 1080×1080 safe-zone over a 1080×1920 frame.
+- Only remote images are supported; provide publicly accessible URLs.
+- ffmpeg is required locally (e.g., `brew install ffmpeg`).
 
 **Examples:**
 
@@ -438,6 +450,7 @@ If the `Logo.svg` file is not found, the server will continue processing without
 
 - Node.js >= 20.3.0 (Sharp requirement)
 - libvips (installed automatically in Docker)
+- ffmpeg (for reel generation; install locally on your host machine)
 
 ## Troubleshooting
 

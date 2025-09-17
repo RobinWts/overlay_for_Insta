@@ -1,5 +1,32 @@
 # Development History
 
+## 2025-09-17 - Two-Slide Reel Endpoint (ffmpeg Ken Burns + text overlays)
+
+### Major Improvements
+- **Two-Slide Reels**: Implemented `GET /2slidesReel` to generate 1080×1920 videos.
+- **Ken Burns Effect**: Smooth zoom/pan per slide using ffmpeg `zoompan`.
+- **Text Overlays**: Reused `makeSvg` to render titles centered in a 1080×1080 safe-zone.
+- **Transitions**: Added cross-fade via `xfade` with support for `fade`, `slide`, `dissolve`, `wipe`.
+- **Media Management**: Ensured `media/reels` and `media/tmp` directories exist.
+
+### Technical Changes
+1. **Endpoint**: Added `/2slidesReel` with validation: `slide1`, `slide2` (required), `title1`, `title2` (optional), `duration1`, `duration2` (1–30s), `transition` (fade|slide|dissolve|wipe), `maxLines` (1–20).
+2. **Helpers**:
+   - `downloadToFile(url, destPath)`: Fetches remote images using `node-fetch` and saves to disk.
+   - `generateVideoOverlayPng(title, maxLines)`: Builds safe-zone overlay PNG via `makeSvg` + Sharp.
+   - `runFfmpeg(args)`: Spawns ffmpeg with robust error capture.
+   - `mapTransition(name)`: Maps friendly names to `xfade` transitions.
+3. **ffmpeg Pipeline**:
+   - Inputs: two looped images + two overlay PNGs.
+   - Filters: `scale` → `zoompan` (Ken Burns), `overlay` (text), `xfade` for transition, `format=yuv420p`.
+   - Encoding: `libx264`, `-preset veryfast`, `-crf 20`, `+faststart`.
+4. **Directories**: Created and used `MEDIA_DIR/reels` and `MEDIA_DIR/tmp` for outputs and temp files.
+5. **Logging & Errors**: Request-scoped IDs, parameter logs, and graceful 4xx/5xx responses.
+
+### Files Modified
+- `server.js` — Added helpers, directory setup, ffmpeg integration, and `/2slidesReel` endpoint.
+- `notes/history.md` — This entry.
+
 ## 2025-09-15 - Comprehensive Console Logging and Monitoring
 
 ### Major Improvements
