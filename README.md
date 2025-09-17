@@ -10,6 +10,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
 - `package-lock.json` 
 - `Logo.svg`
 - `Dockerfile`
+- `entrypoint.sh`
 
 Then add the overlay service to your `docker-compose.yml` (this is an exmaple config for a basic n8n installation):
 
@@ -116,8 +117,8 @@ services:
     restart: unless-stopped
     environment:
       - OVERLAY_DOMAIN=${OVERLAY_DOMAIN:-overlay.localhost}
-      - API_KEY=${OVERLAY_API_KEY:-default-api-key-change-in-production}
-      - REQUIRE_API_KEY=${OVERLAY_REQUIRE_API_KEY:-true}
+      - OVERLAY_API_KEY=${OVERLAY_API_KEY:-default-api-key-change-in-production}
+      - OVERLAY_REQUIRE_API_KEY=${OVERLAY_REQUIRE_API_KEY:-true}
     volumes:
       - overlay_media:/app/media
     networks:
