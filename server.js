@@ -31,18 +31,18 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 
 // Set port from environment variable or default to 8080
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.OVERLAY_PORT || 8080;
 
 // API Security Configuration
-const API_KEY = process.env.API_KEY || 'default-api-key-change-in-production';
-const REQUIRE_API_KEY = process.env.REQUIRE_API_KEY !== 'false'; // Default to true unless explicitly disabled
+const API_KEY = process.env.OVERLAY_API_KEY || 'default-api-key-change-in-production';
+const REQUIRE_API_KEY = process.env.OVERLAY_REQUIRE_API_KEY !== 'false'; // Default to true unless explicitly disabled
 
 // Media and Path Configuration
-const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
-const MEDIA_DIR = process.env.MEDIA_DIR || path.join(process.cwd(), 'media');
-const REELS_SUBDIR = process.env.REELS_SUBDIR || 'reels';
-const TMP_SUBDIR = process.env.TMP_SUBDIR || 'tmp';
-const BG_DIR = process.env.BG_DIR || path.join(process.cwd(), 'assets', 'reels_bg');
+const DOMAIN = process.env.OVERLAY_DOMAIN || 'http://localhost:8080';
+const MEDIA_DIR = process.env.OVERLAY_MEDIA_DIR || path.join(process.cwd(), 'media');
+const REELS_SUBDIR = process.env.OVERLAY_REELS_SUBDIR || 'reels';
+const TMP_SUBDIR = process.env.OVERLAY_TMP_SUBDIR || 'tmp';
+const BG_DIR = process.env.OVERLAY_BG_DIR || path.join(process.cwd(), 'assets', 'reels_bg');
 
 // Construct full paths
 const REELS_DIR = path.join(MEDIA_DIR, REELS_SUBDIR);
@@ -338,7 +338,7 @@ async function generate2SlidesReel({ slide1, slide2, title1, title2, duration1, 
     await execFFmpeg(ffmpegCommand, requestId);
 
     // Generate video URL
-    const videoUrl = `${BASE_URL}/media${REELS_SUBDIR}/${path.basename(outputPath)}`;
+    const videoUrl = `https://${DOMAIN}/media${REELS_SUBDIR}/${path.basename(outputPath)}`;
 
     console.log(`✅ [${requestId}] Video generated successfully: ${videoUrl}`);
     return videoUrl;
@@ -867,7 +867,7 @@ app.listen(PORT, () => {
   if (REQUIRE_API_KEY) {
     console.log(`🔑 API Key: ${API_KEY.substring(0, 8)}... (use X-API-Key header)`);
   }
-  console.log(`🌐 Base URL: ${BASE_URL}`);
+  console.log(`🌐 URL: https://${DOMAIN}`);
   console.log(`📁 Media directory: ${MEDIA_DIR}`);
   console.log(`🎬 Reels directory: ${REELS_DIR}`);
   console.log(`📂 Temp directory: ${TMP_DIR}`);

@@ -1,10 +1,11 @@
 FROM node:20.3.0-bookworm-slim
 
-# install libvips, font dependencies, and curl
+# install libvips, font dependencies, ffmpeg, and curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips \
     librsvg2-2 libpango-1.0-0 libharfbuzz0b libcairo2 \
-    fontconfig fonts-inter fonts-liberation fonts-dejavu-core curl \
+    fontconfig fonts-inter fonts-liberation fonts-dejavu-core \
+    ffmpeg curl \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -f -v
 
@@ -19,6 +20,9 @@ RUN npm ci --omit=dev --no-audit --no-fund
 
 # copy app files and assets
 COPY --chown=node:node server.js Logo.svg ./
+
+# create media directories
+RUN mkdir -p /app/media/reels /app/media/tmp /app/assets/reels_bg
 
 # run as non-root
 USER node

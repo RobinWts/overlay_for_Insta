@@ -21,6 +21,7 @@ networks:
 volumes:
   traefik_data:
   db_data:
+  overlay_media:
 
 services:
   traefik:
@@ -113,10 +114,22 @@ services:
       context: ./overlay
     container_name: overlay
     restart: unless-stopped
+    environment:
+      - OVERLAY_DOMAIN=${OVERLAY_DOMAIN:-overlay.localhost}
+      - API_KEY=${OVERLAY_API_KEY:-default-api-key-change-in-production}
+      - REQUIRE_API_KEY=${OVERLAY_REQUIRE_API_KEY:-true}
+    volumes:
+      - overlay_media:/app/media
     networks:
       - proxy
     labels:
-      traefik.enable: "false"
+      traefik.enable: "true"
+      traefik.http.routers.overlay-media.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/reels/`)"
+      traefik.http.routers.overlay-media.entrypoints: "websecure"
+      traefik.http.routers.overlay-media.tls.certresolver: "le-http"
+      traefik.http.services.overlay-media.loadbalancer.server.port: "8080"
+      traefik.http.routers.overlay-media.middlewares: "securityHeaders@file"
+      com.centurylinklabs.watchtower.enable: "false"
 ```
 
 ## Features
