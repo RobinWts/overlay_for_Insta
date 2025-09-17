@@ -305,6 +305,77 @@ async function generate2SlidesReel({ slide1, slide2, title1, title2, duration1, 
     await downloadImage(slide1, slide1Path, requestId);
     await downloadImage(slide2, slide2Path, requestId);
 
+    // Read image metadata to compute aspect ratios and log Ken Burns params
+    const [meta1, meta2] = await Promise.all([
+      sharp(slide1Path).metadata(),
+      sharp(slide2Path).metadata()
+    ]);
+
+    const ar1 = meta1 && meta1.width && meta1.height ? (meta1.width / meta1.height) : null;
+    const ar2 = meta2 && meta2.width && meta2.height ? (meta2.width / meta2.height) : null;
+    const fmtAr = (ar) => (ar ? ar.toFixed(3) : 'n/a');
+    const orient = (w, h) => {
+      if (!w || !h) return 'unknown';
+      if (w === h) return 'square';
+      return w > h ? 'landscape' : 'portrait';
+    };
+
+    // Ken Burns configuration used in filters
+    const fps = 30;
+    const D1 = Math.max(1, Math.round(duration1 * fps));
+    const D2 = Math.max(1, Math.round(duration2 * fps));
+    const scaleW = 4320; // pre-scale width before zoompan
+    const scaleH = 7680; // pre-scale height before zoompan
+    const outW = 1080;   // final output width
+    const outH = 1920;   // final output height
+    const zStep = 0.0008; // zoom increment per frame
+    const zStart = 1.0;
+    const zEnd1 = zStart + zStep * D1;
+    const zEnd2 = zStart + zStep * D2;
+    const dxPerFrame = 2; // pixels/frame horizontal pan
+
+    // Effective pan boundaries (theoretical, ignoring zoom crop interactions)
+    const maxX = scaleW - outW; // 4320 - 1080 = 3240
+    const s1StartX = 0;
+    const s1EndXUnclamped = dxPerFrame * D1;
+    const s1EndX = Math.min(maxX, Math.max(0, s1EndXUnclamped));
+    const s1DeltaX = s1EndX - s1StartX;
+    const s1Y = Math.round((scaleH - outH) / 2); // centered vertically
+
+    const s2StartX = Math.max(0, maxX);
+    const s2EndXUnclamped = s2StartX - dxPerFrame * D2;
+    const s2EndX = Math.max(0, Math.min(maxX, s2EndXUnclamped));
+    const s2DeltaX = s2EndX - s2StartX; // negative or zero
+    const s2Y = s1Y;
+
+    // Transition offset (seconds)
+    const xfadeOffsetSec = Math.max(0, duration1 - 1);
+
+    console.log(`🧭 [${requestId}] Ken Burns parameters:`);
+    console.log(`   • Slide 1 image: ${meta1?.width || 'n/a'}x${meta1?.height || 'n/a'} (${orient(meta1?.width, meta1?.height)}, AR=${fmtAr(ar1)})`);
+    console.log(`   • Slide 2 image: ${meta2?.width || 'n/a'}x${meta2?.height || 'n/a'} (${orient(meta2?.width, meta2?.height)}, AR=${fmtAr(ar2)})`);
+    console.log(`   • Output: ${outW}x${outH} @ ${fps}fps (pre-scale ${scaleW}x${scaleH})`);
+    console.log(`   • Durations: slide1=${duration1}s (${D1} frames), slide2=${duration2}s (${D2} frames), xfade offset=${xfadeOffsetSec}s, xfade duration=1s`);
+    console.log(`   • Zoom: zStart=${zStart.toFixed(4)}, zStep/frame=${zStep.toFixed(4)}, zEnd1=${zEnd1.toFixed(4)}, zEnd2=${zEnd2.toFixed(4)}`);
+    console.log(`   • Slide1 pan: x ${s1StartX} → ${s1EndX} (Δ=${s1DeltaX}), y=${s1Y}, dx/frame=${dxPerFrame}`);
+    console.log(`   • Slide2 pan: x ${s2StartX} → ${s2EndX} (Δ=${s2DeltaX}), y=${s2Y}, dx/frame=-${dxPerFrame}`);
+
+    // Bundle Ken Burns configuration to pass through to filter builder
+    const kenBurns = {
+      fps,
+      scaleW,
+      scaleH,
+      outW,
+      outH,
+      zStart,
+      zStep,
+      dxPerFrame,
+      xfadeDurationSec: 1,
+      xfadeOffsetSec,
+      frames1: D1,
+      frames2: D2
+    };
+
     // Generate text overlays if provided
     let title1Path = null;
     let title2Path = null;
@@ -330,7 +401,8 @@ async function generate2SlidesReel({ slide1, slide2, title1, title2, duration1, 
       duration2,
       transition,
       outputPath,
-      requestId
+      requestId,
+      kenBurns
     });
 
     // Execute FFmpeg
@@ -405,7 +477,7 @@ async function generateTextOverlay(text, outputPath, requestId) {
  * @param {Object} params - Command parameters
  * @returns {Array} FFmpeg command arguments
  */
-function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, duration1, duration2, transition, outputPath, requestId }) {
+function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, duration1, duration2, transition, outputPath, requestId, kenBurns }) {
   const command = [
     '-y', // Overwrite output file
     '-loop', '1', '-framerate', '30', '-i', slide1Path,
@@ -427,12 +499,14 @@ function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, du
     duration1,
     duration2,
     transition,
-    requestId
+    requestId,
+    kenBurns
   });
 
   command.push('-filter_complex', filterComplex);
   command.push('-map', '[vfinal]');
-  command.push('-t', (duration1 + duration2 - 1).toString()); // Total duration minus 1 second for transition
+  const xfadeDur = (kenBurns && kenBurns.xfadeDurationSec) || 1;
+  command.push('-t', (duration1 + duration2 - xfadeDur).toString());
   command.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '30');
   command.push(outputPath);
 
@@ -446,7 +520,7 @@ function buildFFmpegCommand({ slide1Path, slide2Path, title1Path, title2Path, du
  * @param {Object} params - Filter parameters
  * @returns {string} Filter complex string
  */
-function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transition, requestId }) {
+function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transition, requestId, kenBurns }) {
   console.log(`🎬 [${requestId}] Building filter complex with Ken Burns effect...`);
 
   // Eingänge: 0=slide1, 1=slide2, 2=title1?, 3=title2?
@@ -456,24 +530,32 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
   const t1 = hasTitle1 ? idx++ : -1;
   const t2 = hasTitle2 ? idx++ : -1;
 
-  // Frames je Slide bei 30 fps
-  const D1 = Math.max(1, Math.round(duration1 * 30));
-  const D2 = Math.max(1, Math.round(duration2 * 30));
+  // Use computed Ken Burns parameters
+  const fps = kenBurns?.fps ?? 30;
+  const scaleW = kenBurns?.scaleW ?? 4320;
+  const scaleH = kenBurns?.scaleH ?? 7680;
+  const outW = kenBurns?.outW ?? 1080;
+  const outH = kenBurns?.outH ?? 1920;
+  const zStart = kenBurns?.zStart ?? 1.0;
+  const zStep = kenBurns?.zStep ?? 0.0008;
+  const D1 = kenBurns?.frames1 ?? Math.max(1, Math.round(duration1 * fps));
+  const D2 = kenBurns?.frames2 ?? Math.max(1, Math.round(duration2 * fps));
+  const dx = kenBurns?.dxPerFrame ?? 2;
+  const xfadeDurationSec = kenBurns?.xfadeDurationSec ?? 1;
+  const xfadeOffsetSec = kenBurns?.xfadeOffsetSec ?? Math.max(0, duration1 - xfadeDurationSec);
 
   // Ken Burns effect with reliable panning for all aspect ratios
   // Use a simpler approach that works consistently across different image types
   // Each slide gets proper scaling and continuous motion for its full duration
 
   let filters = [
-    // Slide 1 - LEFT TO RIGHT pan: starts at x=0, ends at x=max
-    // Simple linear progression from 0 to full width over duration
-    `[${s1}:v]scale=4320:7680:force_original_aspect_ratio=increase,crop=4320:7680,` +
-    `zoompan=z='1+0.0008*on':d=${D1}:x='on*2':y='(ih-oh)/2':s=1080x1920:fps=30,format=yuv420p[v1]`,
+    // Slide 1 - LEFT TO RIGHT pan
+    `[${s1}:v]scale=${scaleW}:${scaleH}:force_original_aspect_ratio=increase,crop=${scaleW}:${scaleH},` +
+    `zoompan=z='${zStart}+${zStep}*on':d=${D1}:x='on*${dx}':y='(ih-oh)/2':s=${outW}x${outH}:fps=${fps},format=yuv420p[v1]`,
 
-    // Slide 2 - RIGHT TO LEFT pan: starts at x=max, ends at x=0
-    // Simple reverse progression from full width to 0 over duration
-    `[${s2}:v]scale=4320:7680:force_original_aspect_ratio=increase,crop=4320:7680,` +
-    `zoompan=z='1+0.0008*on':d=${D2}:x='max(0,(iw-ow)-on*2)':y='(ih-oh)/2':s=1080x1920:fps=30,format=yuv420p[v2]`,
+    // Slide 2 - RIGHT TO LEFT pan
+    `[${s2}:v]scale=${scaleW}:${scaleH}:force_original_aspect_ratio=increase,crop=${scaleW}:${scaleH},` +
+    `zoompan=z='${zStart}+${zStep}*on':d=${D2}:x='max(0,(iw-ow)-on*${dx})':y='(ih-oh)/2':s=${outW}x${outH}:fps=${fps},format=yuv420p[v2]`,
   ].join(";");
 
   // Text-Overlays (PNG/SVG sollten 1080x1920 oder transparenten Canvas haben)
@@ -488,9 +570,8 @@ function buildFilterComplex({ hasTitle1, hasTitle2, duration1, duration2, transi
     filters += `;[v2][${t2}:v]overlay=x=(W-w)/2:y=810:eval=init[v2_txt]`;
   }
 
-  // Crossfade exakt nach duration1-1s
-  const xfadeOffset = Math.max(0, duration1 - 1); // Sekunden
-  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=1:offset=${xfadeOffset},format=yuv420p[vfinal]`;
+  // Crossfade using computed timing
+  filters += `;[${v1Final}][${v2Final}]xfade=transition=fade:duration=${xfadeDurationSec}:offset=${xfadeOffsetSec},format=yuv420p[vfinal]`;
 
   console.log(`✅ [${requestId}] Ken Burns filter complex built successfully`);
   return filters;
