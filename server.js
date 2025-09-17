@@ -338,7 +338,7 @@ async function generate2SlidesReel({ slide1, slide2, title1, title2, duration1, 
     await execFFmpeg(ffmpegCommand, requestId);
 
     // Generate video URL
-    const videoUrl = `https://${DOMAIN}/media${REELS_SUBDIR}/${path.basename(outputPath)}`;
+    const videoUrl = `https://${DOMAIN}/${MEDIA_DIR}/${REELS_SUBDIR}/${path.basename(outputPath)}`;
 
     console.log(`✅ [${requestId}] Video generated successfully: ${videoUrl}`);
     return videoUrl;

@@ -31,7 +31,7 @@ EXPOSE 8080
 
 # Healthcheck bleibt wie gehabt
 HEALTHCHECK --interval=120s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -fsS "http://localhost:8080/overlay?img=https://picsum.photos/300/300&title=test&source=test" >/dev/null || exit 1
+    CMD curl -fsS "http://localhost:8080/healthz" >/dev/null || exit 1
 
 # Wichtig: kein USER node hier – das Skript muss chown können
 ENTRYPOINT ["/app/entrypoint.sh"]
