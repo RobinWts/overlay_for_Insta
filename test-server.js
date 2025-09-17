@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BASE_URL = 'http://localhost:8080';
-const API_KEY = process.env.API_KEY || 'default-api-key-change-in-production';
+const API_KEY = process.env.OVERLAY_API_KEY || 'default-api-key-change-in-production';
 
 /**
  * Test API key validation
