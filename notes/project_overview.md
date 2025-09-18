@@ -15,6 +15,15 @@ This is an AI-first Node.js microservice that generates Instagram-style image ov
 
 ## Technical Architecture
 
+### Modular Architecture
+The application follows a clean modular architecture with clear separation of concerns:
+
+- **Server Setup** (`server.js`): Express configuration, middleware setup, and route definitions
+- **Endpoint Handlers** (`endpoints/`): Business logic for each API endpoint
+- **Shared Utilities** (`helpers.js`): Reusable functions across multiple endpoints
+- **Middleware** (`middleware/`): Express middleware for authentication and other concerns
+- **Configuration**: Environment-based configuration with dependency injection
+
 ### Server Stack
 - **Runtime**: Node.js >= 20.3.0 (Sharp requirement)
 - **Framework**: Express.js for HTTP server with JSON body parsing
@@ -23,7 +32,7 @@ This is an AI-first Node.js microservice that generates Instagram-style image ov
 - **Text Rendering**: Custom SVG generation with precise typography control
 - **Environment Management**: dotenv for configuration management
 - **File System**: Native fs/promises for async file operations
-- **Process Management**: child_process for video generation (future)
+- **Process Management**: child_process for video generation
 
 ### API Endpoints
 
@@ -115,7 +124,14 @@ GET /media/*
 ## File Structure
 ```
 overlay_for_Insta/
-├── server.js              # Main Express server application
+├── server.js              # Main Express server (configuration & routing only)
+├── helpers.js             # Shared utility functions
+├── endpoints/             # Endpoint handlers
+│   ├── health.js          # Health check endpoint
+│   ├── overlay.js         # Image overlay endpoint
+│   └── reel.js            # Video reel endpoint
+├── middleware/            # Express middleware
+│   └── auth.js            # API key validation middleware
 ├── test-server.js         # Comprehensive test suite
 ├── example-usage.js       # Usage examples and demonstrations
 ├── package.json           # Dependencies and scripts

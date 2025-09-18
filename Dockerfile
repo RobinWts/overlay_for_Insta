@@ -17,7 +17,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 # app & assets
-COPY --chown=node:node server.js Logo.svg ./
+COPY --chown=node:node server.js helpers.js Logo.svg ./
+COPY --chown=node:node endpoints/ ./endpoints/
+COPY --chown=node:node middleware/ ./middleware/
 
 # Verzeichnisse (Image-seitig) + Ownership
 RUN mkdir -p /app/media/reels /app/media/tmp /app/assets/reels_bg \

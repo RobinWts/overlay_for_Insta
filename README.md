@@ -5,12 +5,21 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 ## Minimalistic Setup
 
 This service can be easily integrated into existing Docker Compose setups by copying the following files to a subdirectory (e.g. /overlay):
-- `server.js`
-- `package.json` 
-- `package-lock.json` 
-- `Logo.svg`
-- `Dockerfile`
-- `entrypoint.sh`
+
+**Required Files:**
+- `server.js` - Main server application
+- `helpers.js` - Shared utility functions
+- `endpoints/` - Endpoint handlers directory
+  - `health.js` - Health check endpoint
+  - `overlay.js` - Image overlay endpoint
+  - `reel.js` - Video reel endpoint
+- `middleware/` - Middleware directory
+  - `auth.js` - API key validation middleware
+- `package.json` - Dependencies and scripts
+- `package-lock.json` - Dependency lock file
+- `Logo.svg` - Logo file for overlay (optional)
+- `Dockerfile` - Container configuration
+- `entrypoint.sh` - Container entrypoint script
 
 Then add the overlay service to your `docker-compose.yml` (this is an exmaple config for a basic n8n installation):
 
@@ -385,14 +394,28 @@ sudo apt-get install fonts-inter
 
 ```
 overlay_for_Insta/
-├── server.js          # Main server application
-├── test-server.js     # Test suite
-├── Logo.svg           # Logo file for overlay (optional)
-├── package.json       # Dependencies and scripts
-├── Dockerfile         # Container configuration
-├── .nvmrc            # Node.js version specification
-├── setup-dev.sh      # Development setup script
-└── README.md         # This file
+├── server.js              # Main Express server (configuration & routing only)
+├── helpers.js             # Shared utility functions
+├── endpoints/             # Endpoint handlers
+│   ├── health.js          # Health check endpoint
+│   ├── overlay.js         # Image overlay endpoint
+│   └── reel.js            # Video reel endpoint
+├── middleware/            # Express middleware
+│   └── auth.js            # API key validation middleware
+├── test-server.js         # Comprehensive test suite
+├── example-usage.js       # Usage examples and demonstrations
+├── Logo.svg              # Logo file for overlay (optional)
+├── package.json          # Dependencies and scripts
+├── Dockerfile            # Container configuration
+├── .nvmrc                # Node.js version specification
+├── setup-dev.sh          # Development setup script
+├── env.example           # Environment variables template
+├── media/                # Media directory (created at runtime)
+│   ├── reels/            # Generated reels storage
+│   └── tmp/              # Temporary files
+├── assets/               # Static assets directory
+│   └── reels_bg/         # Background assets for reels
+└── README.md             # This file
 ```
 
 ## Docker Deployment
