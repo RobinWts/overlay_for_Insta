@@ -1,5 +1,108 @@
 # Development History
 
+## 2025-09-21 - Major Code Refactoring: Modular Architecture
+
+### Major Improvements
+- **3SlidesReel**: new endpoint for 3 slides reel generation
+- **deprecation fix**: fixed deprecation warning due to rmkd NODE call
+- **Debug output**: added debug output to svg creation
+- **documentation**: documentation and notes updated
+
+## 2025-09-18 - Major Code Refactoring: Modular Architecture
+
+### Major Improvements
+- **Modular Architecture**: Refactored monolithic server.js into clean, maintainable modules
+- **Separation of Concerns**: Each endpoint now has its own dedicated file
+- **Reusable Helpers**: Centralized utility functions in dedicated helpers.js file
+- **Clean Server Setup**: Main server.js now focuses only on configuration and routing
+- **Improved Maintainability**: 81% reduction in main server file size (972 → 172 lines)
+- **Better Testability**: Individual components can now be tested in isolation
+
+### Technical Changes
+1. **File Structure Reorganization**:
+   - `server.js` - Now only contains server setup, configuration, and endpoint definitions
+   - `helpers.js` - All shared utility functions (makeSvg, downloadImage, generateTextOverlay, etc.)
+   - `endpoints/health.js` - Health check endpoint handler
+   - `endpoints/overlay.js` - Image overlay endpoint handler  
+   - `endpoints/reel.js` - Video reel endpoint handler
+   - `middleware/auth.js` - API key validation middleware
+
+2. **Helper Functions Extracted**:
+   - `makeSvg()` - SVG generation for text overlays
+   - `downloadImage()` - Image downloading utility
+   - `generateTextOverlay()` - Text overlay generation for videos
+   - `buildFFmpegCommand()` - FFmpeg command building
+   - `buildFilterComplex()` - FFmpeg filter complex building
+   - `execFFmpeg()` - FFmpeg execution
+   - `generate2SlidesReel()` - Main video generation function
+
+3. **Endpoint Modularization**:
+   - Each endpoint is now self-contained with its own file
+   - Clean separation between business logic and server setup
+   - Configuration object passed to endpoints for dependency injection
+   - Middleware functions properly separated and reusable
+
+4. **Import/Export Structure**:
+   - All modules use ES6 import/export syntax
+   - Clean dependency management between modules
+   - Proper separation of concerns maintained
+
+### Benefits
+- **Maintainability**: Much easier to find and modify specific functionality
+- **Scalability**: New endpoints can be added without touching existing code
+- **Reusability**: Helper functions can be easily reused across different endpoints
+- **Testing**: Individual components can be unit tested in isolation
+- **Code Organization**: Clear structure makes the codebase more professional
+- **Team Development**: Multiple developers can work on different endpoints simultaneously
+- **Debugging**: Issues can be isolated to specific modules more easily
+
+### Files Created
+- `helpers.js` - Centralized utility functions (502 lines)
+- `endpoints/health.js` - Health check handler (21 lines)
+- `endpoints/overlay.js` - Overlay endpoint handler (198 lines)
+- `endpoints/reel.js` - Reel endpoint handler (167 lines)
+- `middleware/auth.js` - Authentication middleware (46 lines)
+
+### Files Modified
+- `server.js` - Refactored to modular structure (172 lines, down from 972)
+- `notes/history.md` - This entry
+
+### Testing Results
+- ✅ All existing functionality preserved
+- ✅ All tests pass successfully
+- ✅ API key validation works correctly
+- ✅ Image overlay generation works correctly
+- ✅ Video reel generation works correctly
+- ✅ Error handling preserved
+- ✅ No linting errors introduced
+
+## 2025-09-17 - Two-Slide Reel Endpoint (ffmpeg Ken Burns + text overlays)
+
+### Major Improvements
+- **Two-Slide Reels**: Implemented `GET /2slidesReel` to generate 1080×1920 videos.
+- **Ken Burns Effect**: Smooth zoom/pan per slide using ffmpeg `zoompan`.
+- **Text Overlays**: Reused `makeSvg` to render titles centered in a 1080×1080 safe-zone.
+- **Transitions**: Added cross-fade via `xfade` with support for `fade`, `slide`, `dissolve`, `wipe`.
+- **Media Management**: Ensured `media/reels` and `media/tmp` directories exist.
+
+### Technical Changes
+1. **Endpoint**: Added `/2slidesReel` with validation: `slide1`, `slide2` (required), `title1`, `title2` (optional), `duration1`, `duration2` (1–30s), `transition` (fade|slide|dissolve|wipe), `maxLines` (1–20).
+2. **Helpers**:
+   - `downloadToFile(url, destPath)`: Fetches remote images using `node-fetch` and saves to disk.
+   - `generateVideoOverlayPng(title, maxLines)`: Builds safe-zone overlay PNG via `makeSvg` + Sharp.
+   - `runFfmpeg(args)`: Spawns ffmpeg with robust error capture.
+   - `mapTransition(name)`: Maps friendly names to `xfade` transitions.
+3. **ffmpeg Pipeline**:
+   - Inputs: two looped images + two overlay PNGs.
+   - Filters: `scale` → `zoompan` (Ken Burns), `overlay` (text), `xfade` for transition, `format=yuv420p`.
+   - Encoding: `libx264`, `-preset veryfast`, `-crf 20`, `+faststart`.
+4. **Directories**: Created and used `MEDIA_DIR/reels` and `MEDIA_DIR/tmp` for outputs and temp files.
+5. **Logging & Errors**: Request-scoped IDs, parameter logs, and graceful 4xx/5xx responses.
+
+### Files Modified
+- `server.js` — Added helpers, directory setup, ffmpeg integration, and `/2slidesReel` endpoint.
+- `notes/history.md` — This entry.
+
 ## 2025-09-15 - Comprehensive Console Logging and Monitoring
 
 ### Major Improvements

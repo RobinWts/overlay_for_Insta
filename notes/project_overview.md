@@ -1,37 +1,89 @@
 # Overlay Image Server - Project Overview
 
 ## Project Context
-This is an AI-first Node.js microservice that generates Instagram-style image overlays with customizable text. The server takes an image URL and overlays title and source text with professional styling, optimized for social media content generation.
+This is an AI-first Node.js microservice that generates Instagram-style image overlays and video reels with customizable text. Originally developed for vServer-hosted n8n workflows, the server provides both static image processing and dynamic video generation capabilities, optimized for social media content creation and automation.
 
 ## Core Functionality
 - **Image Processing**: Uses Sharp library for high-performance image manipulation
 - **Text Overlay**: Renders SVG-based text overlays with professional typography
 - **Smart Text Wrapping**: Automatically wraps long titles across multiple lines (up to 5)
 - **Responsive Design**: Text scales appropriately with image dimensions
+- **Video Generation**: Two-slide Instagram reel creation with customizable transitions
+- **API Security**: API key authentication for secure access control
+- **Media Management**: Static file serving and organized directory structure
 - **Error Handling**: Graceful handling of invalid URLs and missing parameters
 
 ## Technical Architecture
 
+### Modular Architecture
+The application follows a clean modular architecture with clear separation of concerns:
+
+- **Server Setup** (`server.js`): Express configuration, middleware setup, and route definitions
+- **Endpoint Handlers** (`endpoints/`): Business logic for each API endpoint
+- **Shared Utilities** (`helpers.js`): Reusable functions across multiple endpoints
+- **Middleware** (`middleware/`): Express middleware for authentication and other concerns
+- **Configuration**: Environment-based configuration with dependency injection
+
 ### Server Stack
 - **Runtime**: Node.js >= 20.3.0 (Sharp requirement)
-- **Framework**: Express.js for HTTP server
+- **Framework**: Express.js for HTTP server with JSON body parsing
 - **Image Processing**: Sharp (libvips-based) for high-performance image manipulation
 - **HTTP Client**: node-fetch for fetching external images
 - **Text Rendering**: Custom SVG generation with precise typography control
+- **Environment Management**: dotenv for configuration management
+- **File System**: Native fs/promises for async file operations
+- **Process Management**: child_process for video generation
 
-### API Endpoint
+### API Endpoints
+
+#### Image Overlay Endpoint
 ```
-GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>
+GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
 ```
 
 **Parameters**:
 - `img` (required): Public URL of source image
-- `title` (optional): Overlay text, max 140 chars, supports multi-line wrapping
-- `source` (optional): Attribution text, max 80 chars
+- `title` (optional): Overlay text, unlimited length, supports multi-line wrapping
+- `source` (optional): Attribution text, unlimited length
 - `w` (optional): Output width, default 1080
 - `h` (optional): Output height, default 1350
+- `maxLines` (optional): Maximum lines for title text, default 5
+- `logo` (optional): Whether to overlay Logo.svg, default false
 
 **Response**: JPEG image with overlay applied
+
+#### Two-Slide Reel Endpoint (Under Development)
+```
+GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
+```
+
+**Parameters**:
+- `slide1` (required): URL of first slide image
+- `slide2` (required): URL of second slide image
+- `title1` (optional): Overlay text for first slide
+- `title2` (optional): Overlay text for second slide
+- `duration1` (optional): Duration of first slide in seconds, default 4
+- `duration2` (optional): Duration of second slide in seconds, default 4
+- `transition` (optional): Transition type (fade, slide, dissolve, wipe), default fade
+
+**Response**: This function generates a 1080×1920 video with a central 1080×1080 safe zone. Inside this zone, the overlay displays the texts provided via title1 and title2. Below the text, the corresponding image is shown with an adapted Ken Burns effect:
+	•	Square or portrait images: gentle panning with a stronger zoom, adjusted to fit the format.
+	•	Landscape images: subtle zoom combined with a smooth pan across the frame.
+The resulting video is stored locally and made available for download in the directory defined by REELS_SUBDIR.
+
+#### Health Check Endpoint
+```
+GET /healthz
+```
+
+**Response**: JSON status with server information
+
+#### Media Serving
+```
+GET /media/*
+```
+
+**Response**: Static media files from configured directory
 
 ### Text Rendering System
 - **Font**: System fonts (-apple-system, Segoe UI, Roboto, Arial)
@@ -39,6 +91,13 @@ GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>
 - **Layout**: Centered text with gradient backgrounds for contrast
 - **Wrapping**: Intelligent word-based wrapping with ellipsis for overflow
 - **Positioning**: Top band for title, bottom-right for source attribution
+
+### Environment Configuration
+- **API Security**: API_KEY for authentication, REQUIRE_API_KEY toggle
+- **Server Settings**: PORT, BASE_URL for server configuration
+- **Media Paths**: MEDIA_DIR, REELS_SUBDIR, TMP_SUBDIR, BG_DIR for file organization
+- **Configuration**: Environment variables loaded via dotenv from .env file
+- **Template**: env.example provides configuration template
 
 ## Development Environment
 
@@ -52,6 +111,7 @@ GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>
 - **Package Manager**: npm
 - **Type**: ES Modules (type: "module" in package.json)
 - **Dependencies**: Production-only (no dev dependencies in Docker)
+- **Environment**: dotenv for configuration management
 
 ### Available Scripts
 - `npm run dev`: Development server with auto-reload
@@ -64,14 +124,28 @@ GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>
 ## File Structure
 ```
 overlay_for_Insta/
-├── server.js              # Main Express server application
+├── server.js              # Main Express server (configuration & routing only)
+├── helpers.js             # Shared utility functions
+├── endpoints/             # Endpoint handlers
+│   ├── health.js          # Health check endpoint
+│   ├── overlay.js         # Image overlay endpoint
+│   └── reel.js            # Video reel endpoint
+├── middleware/            # Express middleware
+│   └── auth.js            # API key validation middleware
 ├── test-server.js         # Comprehensive test suite
 ├── example-usage.js       # Usage examples and demonstrations
 ├── package.json           # Dependencies and scripts
 ├── Dockerfile            # Production container configuration
 ├── .nvmrc                # Node.js version specification
 ├── setup-dev.sh          # Development environment setup
+├── env.example           # Environment variables template
+├── Logo.svg              # Logo file for overlay (optional)
 ├── README.md             # Human-readable documentation
+├── media/                # Media directory (created at runtime)
+│   ├── reels/            # Generated reels storage
+│   └── tmp/              # Temporary files
+├── assets/               # Static assets directory
+│   └── reels_bg/         # Background assets for reels
 ├── notes/
 │   ├── project_overview.md  # This AI context file
 │   └── history.md          # Development history and changes
@@ -111,8 +185,10 @@ overlay_for_Insta/
 
 ### Test Coverage
 - **Health Checks**: Server availability and basic functionality
+- **API Key Validation**: Authentication and authorization testing
 - **Image Processing**: Various image sizes and formats
 - **Text Rendering**: Short titles, long titles, multi-line wrapping
+- **Reel Generation**: Parameter validation and endpoint testing
 - **Error Handling**: Missing parameters, invalid URLs, network failures
 - **Edge Cases**: Small images, large images, special characters
 
@@ -137,15 +213,19 @@ overlay_for_Insta/
 
 ## Known Limitations
 - **Image Sources**: Requires publicly accessible image URLs
-- **Text Length**: Title limited to 140 characters, source to 80 characters
+- **Text Length**: No character limits (handled by wrapping and truncation)
 - **Image Formats**: Input images converted to JPEG output
+- **Video Generation**: Currently under development (returns 501 Not Implemented)
 - **Network**: Depends on external image availability
+- **API Key**: Required for all endpoints except health check
 
 ## Security Considerations
+- **API Key Authentication**: All endpoints (except health check) require valid API key
 - **Input Validation**: All parameters validated and sanitized
 - **URL Safety**: External URLs fetched safely with proper error handling
 - **Container Security**: Non-root user in Docker container
 - **Error Messages**: Generic error responses to avoid information leakage
+- **Environment Variables**: Sensitive configuration via environment variables
 
 ## Performance Characteristics
 - **Image Processing**: Sharp provides high-performance image manipulation
@@ -155,9 +235,11 @@ overlay_for_Insta/
 
 ## Integration Points
 - **External Images**: Fetches images from any publicly accessible URL
+- **n8n Workflows**: Originally designed for vServer-hosted n8n automation
 - **Supabase**: Designed to work with Supabase public image URLs
 - **Social Media**: Optimized output for Instagram and other social platforms
 - **API Clients**: RESTful API for easy integration with other services
+- **Docker Compose**: Easy integration into existing containerized environments
 
 ## Development Workflow
 1. **Setup**: Run `./setup-dev.sh` for initial environment setup

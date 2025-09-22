@@ -5,11 +5,22 @@ A Node.js server that creates Instagram-style image overlays with customizable t
 ## Minimalistic Setup
 
 This service can be easily integrated into existing Docker Compose setups by copying the following files to a subdirectory (e.g. /overlay):
-- `server.js`
-- `package.json` 
-- `package-lock.json` 
-- `Logo.svg`
-- `Dockerfile`
+
+**Required Files:**
+- `server.js` - Main server application
+- `helpers.js` - Shared utility functions
+- `endpoints/` - Endpoint handlers directory
+  - `health.js` - Health check endpoint
+  - `overlay.js` - Image overlay endpoint
+  - `reel.js` - Video reel endpoint
+  - `3slidesReel.js` - Video reel endpoint for 3 slides
+- `middleware/` - Middleware directory
+  - `auth.js` - API key validation middleware
+- `package.json` - Dependencies and scripts
+- `package-lock.json` - Dependency lock file
+- `Logo.svg` - Logo file for overlay (optional)
+- `Dockerfile` - Container configuration
+- `entrypoint.sh` - Container entrypoint script
 
 Then add the overlay service to your `docker-compose.yml` (this is an exmaple config for a basic n8n installation):
 
@@ -21,6 +32,7 @@ networks:
 volumes:
   traefik_data:
   db_data:
+  overlay_media:
 
 services:
   traefik:
@@ -29,7 +41,7 @@ services:
     restart: unless-stopped
     command:
       - "--configfile=/traefik/traefik.yml"
-      - "--certificatesresolvers.le-http.acme.email=your-email@example.com"
+      - "--certificatesresolvers.le-http.acme.email=robin@glavegbr.de"
     ports:
       - "80:80"
       - "443:443"
@@ -113,10 +125,27 @@ services:
       context: ./overlay
     container_name: overlay
     restart: unless-stopped
+    environment:
+      - OVERLAY_DOMAIN
+      - OVERLAY_API_KEY
+      - OVERLAY_REQUIRE_API_KEY
+      - OVERLAY_PORT
+      - OVERLAY_MEDIA_DIR
+      - OVERLAY_REELS_SUBDIR
+      - OVERLAY_TMP_SUBDIR
+      - OVERLAY_BG_DIR
+    volumes:
+      - overlay_media:/app/media
     networks:
       - proxy
     labels:
-      traefik.enable: "false"
+      traefik.enable: "true"
+      traefik.http.routers.overlay-media.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/reels/`)"
+      traefik.http.routers.overlay-media.entrypoints: "websecure"
+      traefik.http.routers.overlay-media.tls.certresolver: "le-http"
+      traefik.http.services.overlay-media.loadbalancer.server.port: "8080"
+      traefik.http.routers.overlay-media.middlewares: "securityHeaders@file"
+      com.centurylinklabs.watchtower.enable: "false"      
 ```
 
 ## Features
@@ -128,6 +157,7 @@ services:
 - ⚡ **High Performance**: Built with Sharp for fast image processing
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
+- 🎬 **Two-Slide Reels**: Generate 1080×1920 videos with Ken Burns and smooth transitions
 
 ## Quick Start
 
@@ -136,6 +166,7 @@ services:
 - Node.js >= 20.3.0 (required for Sharp compatibility)
 - npm or yarn
 - Docker (optional, for containerized deployment)
+- ffmpeg (required for video reel generation)
 
 ### Development Setup
 
@@ -156,9 +187,65 @@ services:
    npm test
    ```
 
+### API Key Configuration
+
+The server uses API key authentication for security. Copy the example environment file and customize it:
+
+```bash
+# Copy the example environment file
+cp env.example .env
+
+# Edit the .env file with your values
+nano .env
+```
+
+Or create the `.env` file manually:
+
+```bash
+# Create .env file
+cat > .env << EOF
+PORT=8080
+API_KEY=your-secure-api-key-here-change-this-in-production
+REQUIRE_API_KEY=true
+EOF
+```
+
+**Environment Variables:**
+- `API_KEY`: Your secret API key (required for all requests)
+- `REQUIRE_API_KEY`: Set to `false` to disable API key validation (not recommended for production)
+- `PORT`: Server port (default: 8080)
+- `BASE_URL`: Base URL for the server (default: http://localhost:8080)
+- `MEDIA_DIR`: Media directory path (default: ./media)
+- `REELS_SUBDIR`: Reels subdirectory (default: reels)
+- `TMP_SUBDIR`: Temporary files subdirectory (default: tmp)
+- `BG_DIR`: Background assets directory (default: ./assets/reels_bg)
+
+**Security Notes:**
+- Generate a strong, random API key for production use:
+  ```bash
+  # Generate a secure 32-character hex key
+  openssl rand -hex 32
+  
+  # Or generate a 64-character base64 key
+  openssl rand -base64 48
+  ```
+- Never commit your `.env` file to version control
+- The API key must be provided in the `X-API-Key` header for all requests
+
 ### API Usage
 
-The server provides a single endpoint for image overlay generation:
+The server provides multiple endpoints for image processing and reel generation with API key security:
+
+#### Available Endpoints
+
+- `GET /healthz` - Health check (no API key required)
+- `GET /overlay` - Image overlay generation
+- `GET /2slidesReel` - Two-slide Instagram reel generation
+- `GET /media/*` - Static media file serving
+
+**Security**: All endpoints except `/healthz` require a valid API key in the `X-API-Key` header.
+
+#### Image Overlay Endpoint
 
 ```
 GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
@@ -178,32 +265,93 @@ GET /overlay?img=<image_url>&title=<title>&source=<source>&w=<width>&h=<height>&
 
 **Basic usage (uses all defaults):**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg" -o output.jpg
 ```
 
 **With custom text and dimensions:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Awesome%20Post&source=@username&w=1080&h=1350" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Awesome%20Post&source=@username&w=1080&h=1350" -o output.jpg
 ```
 
 **With custom max lines:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very%20long%20title%20text&maxLines=3" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Very%20long%20title%20text&maxLines=3" -o output.jpg
 ```
 
 **Single line title:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Short%20Title&maxLines=1" -o output.jpg
 ```
 
 **With logo overlay:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Post&logo=true" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=My%20Post&logo=true" -o output.jpg
 ```
 
 **Full customization:**
 ```bash
-curl "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
+```
+
+#### Two-Slide Reel Endpoint
+
+```
+GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
+```
+
+**Parameters:**
+- `slide1` (required): URL of the first slide image
+- `slide2` (required): URL of the second slide image
+- `title1` (optional): Overlay text for first slide (default: empty)
+- `title2` (optional): Overlay text for second slide (default: empty)
+- `duration1` (optional): Duration of first slide in seconds (default: 4)
+- `duration2` (optional): Duration of second slide in seconds (default: 4)
+- `transition` (optional): Transition type between slides (default: "fade")
+
+**Valid transition types:**
+- `fade` - Fade between slides
+- `slide` - Slide transition
+- `dissolve` - Dissolve effect
+- `wipe` - Wipe transition
+
+**Notes:**
+- Titles are rendered in a centered 1080×1080 safe-zone over a 1080×1920 frame.
+- Only remote images are supported; provide publicly accessible URLs.
+- ffmpeg is required locally (e.g., `brew install ffmpeg`).
+
+**Examples:**
+
+**Basic usage (minimal parameters):**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg"
+```
+
+**With titles and custom durations:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg&title1=First%20Slide&title2=Second%20Slide&duration1=3&duration2=5"
+```
+
+**With custom transition:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=https://example.com/slide1.jpg&slide2=https://example.com/slide2.jpg&transition=slide"
+```
+
+**Response:** Returns a JSON object with the video URL and processing information.
+
+#### Health Check Endpoint
+
+```
+GET /healthz
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "version": "1.0.0",
+  "endpoints": ["/overlay", "/2slidesReel", "/healthz"]
+}
 ```
 
 ## Development
@@ -247,14 +395,28 @@ sudo apt-get install fonts-inter
 
 ```
 overlay_for_Insta/
-├── server.js          # Main server application
-├── test-server.js     # Test suite
-├── Logo.svg           # Logo file for overlay (optional)
-├── package.json       # Dependencies and scripts
-├── Dockerfile         # Container configuration
-├── .nvmrc            # Node.js version specification
-├── setup-dev.sh      # Development setup script
-└── README.md         # This file
+├── server.js              # Main Express server (configuration & routing only)
+├── helpers.js             # Shared utility functions
+├── endpoints/             # Endpoint handlers
+│   ├── health.js          # Health check endpoint
+│   ├── overlay.js         # Image overlay endpoint
+│   └── reel.js            # Video reel endpoint
+├── middleware/            # Express middleware
+│   └── auth.js            # API key validation middleware
+├── test-server.js         # Comprehensive test suite
+├── example-usage.js       # Usage examples and demonstrations
+├── Logo.svg              # Logo file for overlay (optional)
+├── package.json          # Dependencies and scripts
+├── Dockerfile            # Container configuration
+├── .nvmrc                # Node.js version specification
+├── setup-dev.sh          # Development setup script
+├── env.example           # Environment variables template
+├── media/                # Media directory (created at runtime)
+│   ├── reels/            # Generated reels storage
+│   └── tmp/              # Temporary files
+├── assets/               # Static assets directory
+│   └── reels_bg/         # Background assets for reels
+└── README.md             # This file
 ```
 
 ## Docker Deployment
@@ -276,6 +438,15 @@ The Dockerfile is optimized for production with:
 - Health checks
 - Minimal dependencies
 - Proper caching layers
+
+**Environment Variables for Docker:**
+```bash
+# Run with custom API key
+docker run -p 8080:8080 -e API_KEY=your-secure-api-key overlay-image
+
+# Run with API key validation disabled (not recommended)
+docker run -p 8080:8080 -e REQUIRE_API_KEY=false overlay-image
+```
 
 ## Text Overlay Features
 
@@ -303,6 +474,7 @@ If the `Logo.svg` file is not found, the server will continue processing without
 
 - Node.js >= 20.3.0 (Sharp requirement)
 - libvips (installed automatically in Docker)
+- ffmpeg (for reel generation; install locally on your host machine)
 
 ## Troubleshooting
 
