@@ -134,8 +134,8 @@ export const overlayHandler = async (req, res) => {
                 console.log(`📁 [${requestId}] Logo file read (${logoBuffer.length} bytes)`);
 
                 // Calculate logo position (bottom-left corner)
-                // Use logo as-is from SVG file with 40px padding from image border
-                const logoPadding = 40;
+                // Use logo as-is from SVG file with 50px padding from image border
+                const logoPadding = 50;
 
                 // Convert SVG to PNG without resizing (use original dimensions)
                 const logoPng = await sharp(logoBuffer)
