@@ -690,7 +690,7 @@ export async function generate2SlidesReel({ slide1, slide2, title1, title2, dura
         // Clean up temporary files
         console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
         try {
-            await fsp.rmdir(tempDir, { recursive: true });
+            await fsp.rm(tempDir, { recursive: true });
         } catch (cleanupError) {
             console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
         }
@@ -878,7 +878,7 @@ export async function generate3SlidesReel({ slide1, slide2, slide3, title1, titl
         // Clean up temporary files
         console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
         try {
-            await fsp.rmdir(tempDir, { recursive: true });
+            await fsp.rm(tempDir, { recursive: true });
         } catch (cleanupError) {
             console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
         }
