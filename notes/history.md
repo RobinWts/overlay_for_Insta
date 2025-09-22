@@ -1,5 +1,13 @@
 # Development History
 
+## 2025-09-21 - Major Code Refactoring: Modular Architecture
+
+### Major Improvements
+- **3SlidesReel**: new endpoint for 3 slides reel generation
+- **deprecation fix**: fixed deprecation warning due to rmkd NODE call
+- **Debug output**: added debug output to svg creation
+- **documentation**: documentation and notes updated
+
 ## 2025-09-18 - Major Code Refactoring: Modular Architecture
 
 ### Major Improvements
