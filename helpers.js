@@ -200,7 +200,7 @@ export async function generateTextOverlay(text, outputPath, requestId) {
 
     // Use the same makeSvg function but with video-optimized dimensions for safe zone
     // 1080x300 for center safe zone of 1080x1920 video (positioned in center 1080x1080 area)
-    const svg = makeSvg(1080, 1080, text, '', 7); // 7 lines max for video
+    const svg = makeSvg(1080, 1080, text, '', 9); // 9 lines max for video
 
     // Convert SVG to PNG using Sharp
     const pngBuffer = await sharp(Buffer.from(svg))
