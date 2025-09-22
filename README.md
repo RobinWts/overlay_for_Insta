@@ -13,6 +13,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
   - `health.js` - Health check endpoint
   - `overlay.js` - Image overlay endpoint
   - `reel.js` - Video reel endpoint
+  - `3slidesReel.js` - Video reel endpoint for 3 slides
 - `middleware/` - Middleware directory
   - `auth.js` - API key validation middleware
 - `package.json` - Dependencies and scripts

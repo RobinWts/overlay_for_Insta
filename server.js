@@ -21,6 +21,7 @@ import path from 'path';
 import { healthCheck } from './endpoints/health.js';
 import { overlayHandler } from './endpoints/overlay.js';
 import { reelHandler } from './endpoints/reel.js';
+import { reel3Handler } from './endpoints/3slidesReel.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -114,6 +115,30 @@ app.get('/healthz', healthCheck);
 app.get('/2slidesReel', validateApiKey(config), (req, res) => reelHandler(req, res, config));
 
 /**
+ * 3 Slides Reel endpoint
+ * 
+ * This endpoint creates Instagram reels with three slides
+ * 
+ * GET /3slidesReel?slide1=<url>&slide2=<url>&slide3=<url>&title1=<text>&title2=<text>&title3=<text>&duration1=<seconds>&duration2=<seconds>&duration3=<seconds>&transition=<type>
+ * 
+ * Parameters:
+ * - slide1 (required): URL of the first slide image
+ * - slide2 (required): URL of the second slide image
+ * - slide3 (required): URL of the third slide image
+ * - title1 (optional): Overlay text for first slide (default: empty)
+ * - title2 (optional): Overlay text for second slide (default: empty)
+ * - title3 (optional): Overlay text for third slide (default: empty)
+ * - duration1 (optional): Duration of first slide in seconds (default: 4)
+ * - duration2 (optional): Duration of second slide in seconds (default: 4)
+ * - duration3 (optional): Duration of third slide in seconds (default: 4)
+ * - transition (optional): Transition type between slides (default: 'fade')
+ * 
+ * Returns:
+ * - Video file URL or processing status
+ */
+app.get('/3slidesReel', validateApiKey(config), (req, res) => reel3Handler(req, res, config));
+
+/**
  * Main API endpoint for image overlay generation
  * 
  * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
@@ -146,7 +171,7 @@ app.listen(PORT, () => {
   console.log(`📡 Server running on port: ${PORT}`);
   console.log(`🔐 API Key validation: ${REQUIRE_API_KEY ? 'ENABLED' : 'DISABLED'}`);
   if (REQUIRE_API_KEY) {
-    console.log(`🔑 API Key: ${API_KEY.substring(0, 8)}... (use X-API-Key header)`);
+    console.log(`🔑 API Key: ${API_KEY.substring(0, 16)}... (use X-API-Key header)`);
   }
   console.log(`🌐 URL: https://${DOMAIN}`);
   console.log(`📁 Media directory: ${MEDIA_DIR}`);
@@ -158,6 +183,7 @@ app.listen(PORT, () => {
   console.log(`   GET  /healthz - Health check`);
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
+  console.log(`   GET  /3slidesReel - Three-slide reel generation`);
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
