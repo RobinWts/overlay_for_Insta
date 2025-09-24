@@ -73,7 +73,7 @@ export async function extractAudio(videoPath, audioPath, requestId) {
 }
 
 /**
- * Creates subtitle timing using aeneas or fallback method
+ * Creates subtitle timing using faster-whisper or fallback method
  * 
  * @param {string} audioPath - Path to the audio file
  * @param {string} text - Text to create subtitles for
@@ -86,62 +86,134 @@ export async function createSubtitleTiming(audioPath, text, srtPath, requestId) 
     console.log(`   • Text: "${text}"`);
     console.log(`   • Output: ${srtPath}`);
 
-    // First try aeneas, if it fails, use a simple fallback
+    // First try faster-whisper, if it fails, use a simple fallback
     try {
-        await createSubtitleTimingWithAeneas(audioPath, text, srtPath, requestId);
-    } catch (aeneasError) {
-        console.warn(`⚠️ [${requestId}] Aeneas failed, using fallback method: ${aeneasError.message}`);
+        await createSubtitleTimingWithWhisper(audioPath, text, srtPath, requestId);
+        // Verify the file was created
+        try {
+            const stats = await fsp.stat(srtPath);
+            console.log(`✅ [${requestId}] SRT file created by faster-whisper: ${srtPath} (${stats.size} bytes)`);
+        } catch (error) {
+            console.error(`❌ [${requestId}] SRT file not found after faster-whisper: ${srtPath}`);
+            throw new Error(`SRT file not created by faster-whisper`);
+        }
+    } catch (whisperError) {
+        console.warn(`⚠️ [${requestId}] Faster-whisper failed, using fallback method: ${whisperError.message}`);
         await createSubtitleTimingFallback(text, srtPath, requestId);
+        // Verify the fallback file was created
+        try {
+            const stats = await fsp.stat(srtPath);
+            console.log(`✅ [${requestId}] SRT file created by fallback: ${srtPath} (${stats.size} bytes)`);
+        } catch (error) {
+            console.error(`❌ [${requestId}] SRT file not found after fallback: ${srtPath}`);
+            throw new Error(`SRT file not created by fallback method`);
+        }
     }
 }
 
 /**
- * Creates subtitle timing using aeneas
+ * Creates subtitle timing using faster-whisper
  * 
  * @param {string} audioPath - Path to the audio file
  * @param {string} text - Text to create subtitles for
  * @param {string} srtPath - Path to save the SRT file
  * @param {string} requestId - Request ID for logging
  */
-async function createSubtitleTimingWithAeneas(audioPath, text, srtPath, requestId) {
-    console.log(`📝 [${requestId}] Trying aeneas for subtitle timing...`);
+async function createSubtitleTimingWithWhisper(audioPath, text, srtPath, requestId) {
+    console.log(`📝 [${requestId}] Trying faster-whisper for subtitle timing...`);
 
-    // Create a temporary text file for aeneas
-    const textPath = audioPath.replace('.wav', '.txt');
-    await fsp.writeFile(textPath, text, 'utf8');
+    // Create a Python script to use faster-whisper
+    const scriptPath = audioPath.replace('.wav', '_whisper.py');
+    const scriptContent = `
+import sys
+from faster_whisper import WhisperModel
+import datetime
+
+def create_srt_from_audio(audio_path, target_text, output_path):
+    # Load the model (using base model for speed)
+    model = WhisperModel("base", device="cpu", compute_type="int8")
+    
+    # Transcribe the audio
+    segments, info = model.transcribe(audio_path, word_timestamps=True)
+    
+    # Create SRT content
+    srt_content = ""
+    subtitle_index = 1
+    
+           # Convert segments to SRT format
+           for segment in segments:
+               start_time = datetime.timedelta(seconds=segment.start)
+               end_time = datetime.timedelta(seconds=segment.end)
+               
+               # Format time as SRT requires (HH:MM:SS,mmm)
+               start_srt = str(start_time).replace('.', ',')
+               if len(start_srt.split(',')[0]) < 8:  # Add leading zeros if needed
+                   start_srt = '0' + start_srt
+               start_srt = start_srt[:12]  # Ensure proper length
+               
+               end_srt = str(end_time).replace('.', ',')
+               if len(end_srt.split(',')[0]) < 8:  # Add leading zeros if needed
+                   end_srt = '0' + end_srt
+               end_srt = end_srt[:12]  # Ensure proper length
+        
+        # Use the target text for the subtitle content
+        srt_content += f"{subtitle_index}\\n"
+        srt_content += f"{start_srt} --> {end_srt}\\n"
+        srt_content += f"{target_text}\\n\\n"
+        
+        subtitle_index += 1
+    
+    # Write SRT file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(srt_content)
+
+if __name__ == "__main__":
+    audio_path = sys.argv[1]
+    target_text = sys.argv[2]
+    output_path = sys.argv[3]
+    
+    create_srt_from_audio(audio_path, target_text, output_path)
+    print("SRT file created successfully")
+`;
+
+    await fsp.writeFile(scriptPath, scriptContent, 'utf8');
 
     try {
-        // Use aeneas to create subtitle timing
+        // Use faster-whisper to create subtitle timing
         const command = [
-            '-m', 'aeneas.tools.execute_task',
-            '--audio', audioPath,
-            '--text', textPath,
-            '--output', srtPath
+            scriptPath,
+            audioPath,
+            text,
+            srtPath
         ];
 
-        console.log(`🔧 [${requestId}] Aeneas command: python ${command.join(' ')}`);
+        console.log(`🔧 [${requestId}] Faster-whisper command: python ${command.join(' ')}`);
 
         const { stdout, stderr } = await execFileAsync('python', command, {
-            maxBuffer: 1024 * 1024 * 5 // 5MB buffer
+            maxBuffer: 1024 * 1024 * 10 // 10MB buffer
         });
 
         if (stderr) {
-            console.log(`📝 [${requestId}] Aeneas stderr:`, stderr.substring(0, 500) + (stderr.length > 500 ? '...' : ''));
+            console.log(`📝 [${requestId}] Faster-whisper stderr:`, stderr.substring(0, 500) + (stderr.length > 500 ? '...' : ''));
         }
 
-        console.log(`✅ [${requestId}] Aeneas subtitle timing completed successfully`);
+        if (stdout) {
+            console.log(`📝 [${requestId}] Faster-whisper stdout:`, stdout);
+        }
 
-        // Clean up temporary text file
+        console.log(`✅ [${requestId}] Faster-whisper subtitle timing completed successfully`);
+
+        // Clean up temporary script file
         try {
-            await fsp.unlink(textPath);
+            await fsp.unlink(scriptPath);
         } catch (cleanupError) {
-            console.warn(`⚠️ [${requestId}] Could not clean up text file: ${cleanupError.message}`);
+            console.warn(`⚠️ [${requestId}] Could not clean up script file: ${cleanupError.message}`);
         }
 
     } catch (error) {
-        // Clean up temporary text file
+        // Clean up temporary script file
         try {
-            await fsp.unlink(textPath);
+            await fsp.unlink(scriptPath);
         } catch (cleanupError) {
             // Ignore cleanup errors
         }
@@ -158,17 +230,59 @@ async function createSubtitleTimingWithAeneas(audioPath, text, srtPath, requestI
  */
 async function createSubtitleTimingFallback(text, srtPath, requestId) {
     console.log(`📝 [${requestId}] Using fallback subtitle timing method...`);
+    console.log(`📝 [${requestId}] Writing SRT to: ${srtPath}`);
 
-    // Create a simple SRT file with the text displayed for the entire duration
-    // This is a basic fallback that shows the text for 10 seconds
-    const srtContent = `1
-00:00:00,000 --> 00:00:10,000
-${text}
+    // Split text into Instagram-friendly segments (3-5 words each)
+    const words = text.split(/\s+/);
+    const segmentDuration = 1.5; // Each segment shows for 1.5 seconds
+    const maxWordsPerSegment = 4; // Maximum 4 words per segment for Instagram readability
 
-`;
+    const segments = [];
+    let currentSegment = [];
+    let segmentIndex = 1;
 
+    for (let i = 0; i < words.length; i++) {
+        currentSegment.push(words[i]);
+
+        // Create segment when we reach max words or end of text
+        if (currentSegment.length >= maxWordsPerSegment || i === words.length - 1) {
+            const startTime = (segmentIndex - 1) * segmentDuration;
+            const endTime = startTime + segmentDuration;
+
+            // Format time as SRT requires (HH:MM:SS,mmm)
+            const startFormatted = formatTimeForSRT(startTime);
+            const endFormatted = formatTimeForSRT(endTime);
+
+            segments.push({
+                index: segmentIndex,
+                start: startFormatted,
+                end: endFormatted,
+                text: currentSegment.join(' ')
+            });
+
+            currentSegment = [];
+            segmentIndex++;
+        }
+    }
+
+    // Generate SRT content
+    const srtContent = segments.map(segment =>
+        `${segment.index}\n${segment.start} --> ${segment.end}\n${segment.text}\n`
+    ).join('\n');
+
+    console.log(`📝 [${requestId}] Created ${segments.length} segments for Instagram`);
+    console.log(`📝 [${requestId}] SRT content: ${JSON.stringify(srtContent)}`);
     await fsp.writeFile(srtPath, srtContent, 'utf8');
     console.log(`✅ [${requestId}] Fallback subtitle timing completed successfully`);
+
+    // Verify the file was written
+    try {
+        const stats = await fsp.stat(srtPath);
+        console.log(`✅ [${requestId}] Fallback SRT file verified: ${srtPath} (${stats.size} bytes)`);
+    } catch (error) {
+        console.error(`❌ [${requestId}] Fallback SRT file verification failed: ${error.message}`);
+        throw error;
+    }
 }
 
 /**
@@ -182,24 +296,41 @@ ${text}
 export async function generateStyledSubtitles(videoPath, srtPath, outputPath, requestId) {
     console.log(`🎨 [${requestId}] Generating Instagram-style subtitles...`);
 
+    // Check if SRT file exists
+    try {
+        const srtStats = await fsp.stat(srtPath);
+        console.log(`📝 [${requestId}] SRT file exists: ${srtPath} (${srtStats.size} bytes)`);
+    } catch (error) {
+        console.error(`❌ [${requestId}] SRT file not found: ${srtPath}`);
+        throw new Error(`SRT file not found: ${srtPath}`);
+    }
+
     // Check if Inter font is available
     const fontPath = await findInterFont();
     if (!fontPath) {
         console.warn(`⚠️ [${requestId}] Inter font not found, using default font`);
     }
 
+    // Use absolute paths for FFmpeg
+    const absVideoPath = path.resolve(videoPath);
+    const absSrtPath = path.resolve(srtPath);
+    const absOutputPath = path.resolve(outputPath);
+
     const command = [
-        '-i', videoPath,
-        '-vf', `subtitles=${srtPath}:force_style='FontName=${fontPath || 'Arial'},FontSize=24,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Shadow=1,Alignment=2'`,
+        '-i', absVideoPath,
+        '-vf', `subtitles=${absSrtPath}:force_style='FontName=${fontPath || 'Arial'},FontSize=24,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Shadow=1,Alignment=2'`,
         '-c:v', 'libx264',
         '-c:a', 'aac',
         '-preset', 'medium',
         '-crf', '23',
         '-y', // Overwrite output file
-        outputPath
+        absOutputPath
     ];
 
     console.log(`🔧 [${requestId}] FFmpeg subtitle command: ffmpeg ${command.join(' ')}`);
+    console.log(`🔧 [${requestId}] Video file exists: ${fs.existsSync(absVideoPath)}`);
+    console.log(`🔧 [${requestId}] SRT file exists: ${fs.existsSync(absSrtPath)}`);
+    console.log(`🔧 [${requestId}] SRT file size: ${fs.existsSync(absSrtPath) ? fs.statSync(absSrtPath).size : 'N/A'} bytes`);
 
     try {
         const { stdout, stderr } = await execFileAsync('ffmpeg', command, {
@@ -281,7 +412,21 @@ export async function generateSubtitledVideo({ videoURL, text, outputPath, reque
         // Create subtitle timing with aeneas
         console.log(`📝 [${requestId}] Creating subtitle timing...`);
         const srtPath = path.join(tempDir, 'subtitles.srt');
+        console.log(`📝 [${requestId}] About to call createSubtitleTiming with:`);
+        console.log(`   • audioPath: ${audioPath}`);
+        console.log(`   • text: "${text}"`);
+        console.log(`   • srtPath: ${srtPath}`);
         await createSubtitleTiming(audioPath, text, srtPath, requestId);
+        console.log(`📝 [${requestId}] createSubtitleTiming completed`);
+
+        // Verify SRT file exists before proceeding
+        try {
+            const srtStats = await fsp.stat(srtPath);
+            console.log(`📝 [${requestId}] SRT file verified: ${srtPath} (${srtStats.size} bytes)`);
+        } catch (error) {
+            console.error(`❌ [${requestId}] SRT file not found: ${srtPath}`);
+            throw new Error(`SRT file not found: ${srtPath}`);
+        }
 
         // Generate Instagram-style subtitles
         console.log(`🎨 [${requestId}] Generating styled subtitles...`);
@@ -291,15 +436,38 @@ export async function generateSubtitledVideo({ videoURL, text, outputPath, reque
         const videoUrl = `https://${DOMAIN}/media/${REELS_SUBDIR}/${path.basename(outputPath)}`;
 
         console.log(`✅ [${requestId}] Subtitled video generated successfully: ${videoUrl}`);
+
+        // Clean up temporary files after successful completion
+        console.log(`🧹 [${requestId}] SKIPPING cleanup for debugging - temp files preserved`);
+        console.log(`🧹 [${requestId}] Temp directory: ${tempDir}`);
+        console.log(`🧹 [${requestId}] SRT file: ${srtPath}`);
+        console.log(`🧹 [${requestId}] Video file: ${videoPath}`);
+        console.log(`🧹 [${requestId}] Output file: ${outputPath}`);
+
         return videoUrl;
 
-    } finally {
-        // Clean up temporary files
-        console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
-        try {
-            await fsp.rm(tempDir, { recursive: true });
-        } catch (cleanupError) {
-            console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
-        }
+    } catch (error) {
+        // Clean up temporary files on error
+        console.log(`🧹 [${requestId}] SKIPPING error cleanup for debugging - temp files preserved`);
+        console.log(`🧹 [${requestId}] Temp directory: ${tempDir}`);
+        console.log(`🧹 [${requestId}] SRT file: ${srtPath}`);
+        console.log(`🧹 [${requestId}] Video file: ${videoPath}`);
+        console.log(`🧹 [${requestId}] Output file: ${outputPath}`);
+        throw error;
     }
 }
+
+/**
+ * Formats time in seconds to SRT format (HH:MM:SS,mmm)
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time string
+ */
+function formatTimeForSRT(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const milliseconds = Math.floor((seconds % 1) * 1000);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds.toString().padStart(3, '0')}`;
+}
+
