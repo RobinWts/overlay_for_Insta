@@ -22,6 +22,7 @@ import { healthCheck } from './endpoints/health.js';
 import { overlayHandler } from './endpoints/overlay.js';
 import { reelHandler } from './endpoints/reel.js';
 import { reel3Handler } from './endpoints/3slidesReel.js';
+import { addSubsHandler } from './endpoints/addSubs.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -139,6 +140,24 @@ app.get('/2slidesReel', validateApiKey(config), (req, res) => reelHandler(req, r
 app.get('/3slidesReel', validateApiKey(config), (req, res) => reel3Handler(req, res, config));
 
 /**
+ * AddSubs endpoint for generating subtitled videos
+ * 
+ * GET /addSubs?videoURL=<url>&text=<text>
+ * 
+ * Parameters:
+ * - videoURL (required): Publicly accessible URL of the video
+ * - text (required): Text for the subtitles
+ * 
+ * Processes a video by:
+ * 1. Downloading the video from the provided URL
+ * 2. Extracting audio using FFmpeg
+ * 3. Using aeneas to create subtitle timing
+ * 4. Generating Instagram-style subtitles with FFmpeg
+ * 5. Returning the final video with embedded subtitles
+ */
+app.get('/addSubs', validateApiKey(config), (req, res) => addSubsHandler(req, res, config));
+
+/**
  * Main API endpoint for image overlay generation
  * 
  * GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=<number>&logo=<boolean>
@@ -184,6 +203,7 @@ app.listen(PORT, () => {
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
+  console.log(`   GET  /addSubs - Subtitle generation for videos`);
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);

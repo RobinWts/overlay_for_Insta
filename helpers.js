@@ -12,6 +12,7 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { v4 as uuidv4 } from 'uuid';
 
 // Promisify execFile for async/await usage
 const execFileAsync = promisify(execFile);

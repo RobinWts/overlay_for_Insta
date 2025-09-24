@@ -166,6 +166,85 @@ async function test2SlidesReelEndpoint() {
 }
 
 /**
+ * Test the addSubs endpoint
+ */
+async function testAddSubsEndpoint() {
+    console.log('🎬 Testing addSubs endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid addSubs request with provided test data',
+            params: {
+                videoURL: 'https://storage.googleapis.com/captions-avatar-orc/orc/studio/video_clip__crop_video/Gl8vkSVYYH3iMY3Aug29/2c037b83-29cf-40ff-b21a-0e7a314b46c6/cropped_result.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=cloud-run-captions-server%40captions-f6de9.iam.gserviceaccount.com%2F20250924%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250924T095712Z&X-Goog-Expires=604800&X-Goog-SignedHeaders=host&X-Goog-Signature=1ffc80200579f88cd5fa3821a8b97092b7b0594f772f9c63e74318c1b1fb68d57aa81c136b5f84a98e9ccff2991f61fc8432129298b25b03e94460265b9e95b83280da6a5016d485ac91d9b1f9651ca55d30205e1d44854b5d1963cfe7574fd77de6fc916100ace8562588c58271086f93423c746612cfb7bf0b4531dc8a70015715a26d823e7c8ea8a88499964d0929e0fea22e665783163ac9a82e0cfe5643f30e19dc9003cd97fb55f6140cc4001c9d67cd20279360d2073ad4c04b597c8aeb2545c0747aff75b29762f4ccf243a8a59d1c51b3b6b1b92d5f1b418b03cea749f406019a73cbd2173d64436a1ed28e6f11a870b5fb3e77b9b92312a53e6d51',
+                text: 'Ich heiße Amanda und lese gerne die Bibel.'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Missing videoURL parameter',
+            params: {
+                text: 'Test subtitle text'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Missing text parameter',
+            params: {
+                videoURL: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid video URL',
+            params: {
+                videoURL: 'not-a-valid-url',
+                text: 'Test subtitle text'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Empty text parameter',
+            params: {
+                videoURL: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+                text: ''
+            },
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL('/addSubs', BASE_URL);
+            Object.entries(testCase.params).forEach(([key, value]) => {
+                url.searchParams.set(key, value);
+            });
+
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                headers: { 'X-API-Key': API_KEY }
+            });
+
+            const responseData = await response.json();
+
+            if (testCase.shouldSucceed && response.ok) {
+                console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
+            } else if (!testCase.shouldSucceed && !response.ok) {
+                console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else {
+                console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
+            }
+        } catch (error) {
+            console.log(`   💥 Exception: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
+/**
  * Test the 3slidesReel endpoint
  */
 async function test3SlidesReelEndpoint() {
@@ -419,6 +498,7 @@ async function runTests() {
         await testOverlayEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
+        await testAddSubsEndpoint();
     }
 
     console.log('='.repeat(50));
@@ -430,4 +510,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testAddSubsEndpoint, testOverlayEndpoint, testServerHealth, runTests };
