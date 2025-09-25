@@ -22,7 +22,11 @@ import { healthCheck } from './endpoints/health.js';
 import { overlayHandler } from './endpoints/overlay.js';
 import { reelHandler } from './endpoints/reel.js';
 import { reel3Handler } from './endpoints/3slidesReel.js';
+<<<<<<< Updated upstream
 import { addSubsHandler } from './endpoints/addSubs.js';
+=======
+import { specialReelHandler } from './endpoints/specialReel.js';
+>>>>>>> Stashed changes
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -140,6 +144,7 @@ app.get('/2slidesReel', validateApiKey(config), (req, res) => reelHandler(req, r
 app.get('/3slidesReel', validateApiKey(config), (req, res) => reel3Handler(req, res, config));
 
 /**
+<<<<<<< Updated upstream
  * AddSubs endpoint for generating subtitled videos
  * 
  * GET /addSubs?videoURL=<url>&text=<text>
@@ -156,6 +161,26 @@ app.get('/3slidesReel', validateApiKey(config), (req, res) => reel3Handler(req, 
  * 5. Returning the final video with embedded subtitles
  */
 app.get('/addSubs', validateApiKey(config), (req, res) => addSubsHandler(req, res, config));
+=======
+ * Special Reel endpoint
+ * 
+ * This endpoint creates special Instagram reels with intro video, middle image with Ken Burns effect, and outro video
+ * 
+ * GET /specialReel?introVideo=<url>&introText=<text>&middleImg=<url>&middleText=<text>&middleDuration=<seconds>&outroVideo=<url>
+ * 
+ * Parameters:
+ * - introVideo (required): URL of the intro video file
+ * - introText (optional): Overlay text for intro video (default: empty)
+ * - middleImg (required): URL of the middle image
+ * - middleText (optional): Overlay text for middle part (default: empty)
+ * - middleDuration (optional): Duration of middle part in seconds (default: 6)
+ * - outroVideo (required): URL of the outro video file
+ * 
+ * Returns:
+ * - Video file URL or processing status
+ */
+app.get('/specialReel', validateApiKey(config), (req, res) => specialReelHandler(req, res, config));
+>>>>>>> Stashed changes
 
 /**
  * Main API endpoint for image overlay generation
@@ -203,7 +228,11 @@ app.listen(PORT, () => {
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
+<<<<<<< Updated upstream
   console.log(`   GET  /addSubs - Subtitle generation for videos`);
+=======
+  console.log(`   GET  /specialReel - Special reel with intro/middle/outro`);
+>>>>>>> Stashed changes
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);

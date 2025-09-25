@@ -166,6 +166,7 @@ async function test2SlidesReelEndpoint() {
 }
 
 /**
+<<<<<<< Updated upstream
  * Test the addSubs endpoint
  */
 async function testAddSubsEndpoint() {
@@ -177,36 +178,95 @@ async function testAddSubsEndpoint() {
             params: {
                 videoURL: 'https://glavegbr.de/Bibel.mp4',
                 text: 'Warum reden nicht mehr Menschen über die Bibel? Sie ist mehr als ein Buch - sie ist eine Quelle der Inspiration, der Weisheit und der Kraft. Entdecke die zeitlosen Geschichten und Werte, die Generationen geprägt haben. Die Bibel - ein Begleiter für alle Lebenslagen.'
+=======
+ * Test the specialReel endpoint
+ */
+async function testSpecialReelEndpoint() {
+    console.log('🎬 Testing specialReel endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid specialReel request with all parameters',
+            params: {
+                introVideo: 'https://glavegbr.de/BibelversDerWoche.mp4',
+                introText: 'Welcome to our special reel! This is the introduction part.',
+                middleImg: 'https://picsum.photos/1080/1350?random=1',
+                middleText: 'This is the middle section with a beautiful image and Ken Burns effect.',
+                middleDuration: 8,
+                outroVideo: 'https://glavegbr.de/Bibel.mp4'
+>>>>>>> Stashed changes
             },
             shouldSucceed: true
         },
         {
+<<<<<<< Updated upstream
             name: 'Missing videoURL parameter',
             params: {
                 text: 'Test subtitle text'
+=======
+            name: 'Valid specialReel request with minimal parameters',
+            params: {
+                introVideo: 'https://glavegbr.de/BibelversDerWoche.mp4',
+                middleImg: 'https://picsum.photos/1024/1024?random=2',
+                outroVideo: 'https://glavegbr.de/Bibel.mp4'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Missing introVideo parameter',
+            params: {
+                middleImg: 'https://picsum.photos/1080/1920?random=3',
+                middleText: 'Middle text only',
+                outroVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+>>>>>>> Stashed changes
             },
             shouldSucceed: false
         },
         {
+<<<<<<< Updated upstream
             name: 'Missing text parameter',
             params: {
                 videoURL: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+=======
+            name: 'Missing middleImg parameter',
+            params: {
+                introVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+                introText: 'Intro text only',
+                outroVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4'
+>>>>>>> Stashed changes
             },
             shouldSucceed: false
         },
         {
+<<<<<<< Updated upstream
             name: 'Invalid video URL',
             params: {
                 videoURL: 'not-a-valid-url',
                 text: 'Test subtitle text'
+=======
+            name: 'Missing outroVideo parameter',
+            params: {
+                introVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+                middleImg: 'https://picsum.photos/1080/1920?random=4',
+                middleText: 'Middle section'
+>>>>>>> Stashed changes
             },
             shouldSucceed: false
         },
         {
+<<<<<<< Updated upstream
             name: 'Empty text parameter',
             params: {
                 videoURL: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
                 text: ''
+=======
+            name: 'Invalid middleDuration (too long)',
+            params: {
+                introVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+                middleImg: 'https://picsum.photos/1080/1920?random=5',
+                middleDuration: 60,
+                outroVideo: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4'
+>>>>>>> Stashed changes
             },
             shouldSucceed: false
         }
@@ -216,7 +276,11 @@ async function testAddSubsEndpoint() {
         console.log(`📋 ${testCase.name}`);
 
         try {
+<<<<<<< Updated upstream
             const url = new URL('/addSubs', BASE_URL);
+=======
+            const url = new URL('/specialReel', BASE_URL);
+>>>>>>> Stashed changes
             Object.entries(testCase.params).forEach(([key, value]) => {
                 url.searchParams.set(key, value);
             });
@@ -498,7 +562,11 @@ async function runTests() {
         await testOverlayEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
+<<<<<<< Updated upstream
         await testAddSubsEndpoint();
+=======
+        await testSpecialReelEndpoint();
+>>>>>>> Stashed changes
     }
 
     console.log('='.repeat(50));
@@ -510,4 +578,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
+<<<<<<< Updated upstream
 export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testAddSubsEndpoint, testOverlayEndpoint, testServerHealth, runTests };
+=======
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testSpecialReelEndpoint, testOverlayEndpoint, testServerHealth, runTests };
+>>>>>>> Stashed changes

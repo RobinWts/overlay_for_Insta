@@ -263,6 +263,27 @@ export async function downloadImage(imageUrl, outputPath, requestId) {
 }
 
 /**
+ * Downloads a video from URL to local path
+ * 
+ * @param {string} videoUrl - URL of the video to download
+ * @param {string} outputPath - Local path to save the video
+ * @param {string} requestId - Request ID for logging
+ */
+export async function downloadVideo(videoUrl, outputPath, requestId) {
+    console.log(`📥 [${requestId}] Downloading video: ${videoUrl}`);
+
+    const response = await fetch(videoUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.status} ${response.statusText}`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await fsp.writeFile(outputPath, buffer);
+
+    console.log(`✅ [${requestId}] Video downloaded: ${outputPath} (${buffer.length} bytes)`);
+}
+
+/**
  * Generates a text overlay PNG file for video reels
  * Uses the same professional styling as the overlay endpoint but optimized for video
  * 
@@ -884,4 +905,316 @@ export async function generate3SlidesReel({ slide1, slide2, slide3, title1, titl
             console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
         }
     }
+}
+
+/**
+ * Generates a special Instagram reel with intro video, middle image with Ken Burns effect, and outro video
+ * 
+ * @param {Object} params - Video generation parameters
+ * @param {string} params.introVideo - URL of intro video
+ * @param {string} params.introText - Text overlay for intro video
+ * @param {string} params.middleImg - URL of middle image
+ * @param {string} params.middleText - Text overlay for middle part
+ * @param {number} params.middleDuration - Duration of middle part in seconds
+ * @param {string} params.outroVideo - URL of outro video
+ * @param {string} params.outputPath - Path where to save the video
+ * @param {string} params.requestId - Request ID for logging
+ * @param {string} params.DOMAIN - Domain for URL generation
+ * @param {string} params.MEDIA_DIR - Media directory path
+ * @param {string} params.REELS_SUBDIR - Reels subdirectory
+ * @param {string} params.TMP_DIR - Temporary directory
+ * @returns {Promise<string>} URL of the generated video
+ */
+export async function generateSpecialReel({ introVideo, introText, middleImg, middleText, middleDuration, outroVideo, outputPath, requestId, DOMAIN, MEDIA_DIR, REELS_SUBDIR, TMP_DIR }) {
+    console.log(`🎬 [${requestId}] Starting specialReel generation...`);
+
+    // Create temporary files for processing
+    const tempDir = path.join(TMP_DIR, requestId);
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    try {
+        // Download all media files
+        console.log(`📥 [${requestId}] Downloading media files...`);
+        const introVideoPath = path.join(tempDir, 'intro.mp4');
+        const middleImgPath = path.join(tempDir, 'middle.jpg');
+        const outroVideoPath = path.join(tempDir, 'outro.mp4');
+
+        await downloadVideo(introVideo, introVideoPath, requestId);
+        await downloadImage(middleImg, middleImgPath, requestId);
+        await downloadVideo(outroVideo, outroVideoPath, requestId);
+
+        // Get video metadata for intro and outro
+        console.log(`📊 [${requestId}] Getting video metadata...`);
+        const [introMeta, outroMeta] = await Promise.all([
+            getVideoMetadata(introVideoPath, requestId),
+            getVideoMetadata(outroVideoPath, requestId)
+        ]);
+
+        console.log(`📊 [${requestId}] Intro video: ${introMeta.width}x${introMeta.height}, ${introMeta.duration}s`);
+        console.log(`📊 [${requestId}] Outro video: ${outroMeta.width}x${outroMeta.height}, ${outroMeta.duration}s`);
+
+        // Validate video durations (prevent excessively long videos)
+        if (introMeta.duration > 30) {
+            throw new Error(`Intro video too long: ${introMeta.duration}s (max 30s)`);
+        }
+        if (outroMeta.duration > 30) {
+            throw new Error(`Outro video too long: ${outroMeta.duration}s (max 30s)`);
+        }
+
+        // Use intro video dimensions as the target resolution
+        const targetWidth = introMeta.width;
+        const targetHeight = introMeta.height;
+        const targetAspectRatio = targetWidth / targetHeight;
+
+        console.log(`📐 [${requestId}] Target resolution: ${targetWidth}x${targetHeight} (AR: ${targetAspectRatio.toFixed(3)})`);
+
+        // Validate outro video has compatible aspect ratio (within 5% tolerance)
+        const outroAspectRatio = outroMeta.width / outroMeta.height;
+        const aspectRatioDiff = Math.abs(targetAspectRatio - outroAspectRatio) / targetAspectRatio;
+
+        if (aspectRatioDiff > 0.05) {
+            throw new Error(
+                `Outro video aspect ratio mismatch: intro ${targetAspectRatio.toFixed(3)} vs outro ${outroAspectRatio.toFixed(3)} ` +
+                `(difference: ${(aspectRatioDiff * 100).toFixed(1)}%, max 5%)`
+            );
+        }
+
+        // Read image metadata for Ken Burns parameters
+        const middleMeta = await sharp(middleImgPath).metadata();
+        const aspectRatio = middleMeta && middleMeta.width && middleMeta.height ? (middleMeta.width / middleMeta.height) : null;
+        const orientation = (w, h) => {
+            if (!w || !h) return 'unknown';
+            if (w === h) return 'square';
+            return w > h ? 'landscape' : 'portrait';
+        };
+
+        console.log(`📊 [${requestId}] Middle image: ${middleMeta?.width || 'n/a'}x${middleMeta?.height || 'n/a'} (${orientation(middleMeta?.width, middleMeta?.height)})`);
+
+        // Generate text overlays if provided
+        let introTextPath = null;
+        let middleTextPath = null;
+
+        if (introText) {
+            console.log(`🎨 [${requestId}] Generating intro text overlay...`);
+            introTextPath = path.join(tempDir, 'intro_text.png');
+            await generateVideoTextOverlay(introText, introTextPath, requestId);
+        }
+
+        if (middleText) {
+            console.log(`🎨 [${requestId}] Generating middle text overlay...`);
+            middleTextPath = path.join(tempDir, 'middle_text.png');
+            await generateTextOverlay(middleText, middleTextPath, requestId);
+        }
+
+        // Build and execute FFmpeg command
+        console.log(`🔧 [${requestId}] Building FFmpeg command for special reel...`);
+        const ffmpegCommand = buildSpecialReelFFmpegCommand({
+            introVideoPath,
+            introTextPath,
+            middleImgPath,
+            middleTextPath,
+            middleDuration,
+            outroVideoPath,
+            outputPath,
+            requestId,
+            targetWidth,
+            targetHeight,
+            introMeta,
+            outroMeta
+        });
+
+        console.log(`⚙️ [${requestId}] Executing FFmpeg...`);
+        await execFFmpeg(ffmpegCommand, requestId);
+
+        // Generate video URL
+        const videoUrl = `https://${DOMAIN}/media/${REELS_SUBDIR}/${path.basename(outputPath)}`;
+
+        console.log(`✅ [${requestId}] Special reel generated successfully: ${videoUrl}`);
+        return videoUrl;
+
+    } finally {
+        // Clean up temporary files
+        console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
+        try {
+            await fsp.rm(tempDir, { recursive: true });
+        } catch (cleanupError) {
+            console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
+        }
+    }
+}
+
+/**
+ * Generates a text overlay PNG file optimized for video overlays (similar to overlay endpoint styling)
+ * 
+ * @param {string} text - Text to overlay
+ * @param {string} outputPath - Path to save the PNG file
+ * @param {string} requestId - Request ID for logging
+ */
+export async function generateVideoTextOverlay(text, outputPath, requestId) {
+    console.log(`🎨 [${requestId}] Generating video text overlay: "${text}"`);
+
+    // Use the same makeSvg function but with video-safe dimensions
+    // Create a transparent overlay that can be positioned over video
+    const svg = makeSvg(1080, 1920, text, '', 9); // 9 lines max for video, no source text
+
+    // Convert SVG to PNG with transparency
+    const pngBuffer = await sharp(Buffer.from(svg))
+        .png()
+        .toBuffer();
+
+    await fsp.writeFile(outputPath, pngBuffer);
+    console.log(`✅ [${requestId}] Video text overlay generated: ${outputPath}`);
+}
+
+/**
+ * Gets video metadata using FFmpeg
+ * 
+ * @param {string} videoPath - Path to the video file
+ * @param {string} requestId - Request ID for logging
+ * @returns {Promise<Object>} Video metadata
+ */
+export async function getVideoMetadata(videoPath, requestId) {
+    console.log(`📊 [${requestId}] Getting metadata for: ${videoPath}`);
+
+    try {
+        const { stdout } = await execFileAsync('ffprobe', [
+            '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_format',
+            '-show_streams',
+            videoPath
+        ]);
+
+        const metadata = JSON.parse(stdout);
+        const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
+
+        const duration = parseFloat(metadata.format.duration) || 0;
+        const width = videoStream?.width || 0;
+        const height = videoStream?.height || 0;
+
+        console.log(`✅ [${requestId}] Video metadata: ${width}x${height}, ${duration}s`);
+
+        return {
+            duration,
+            width,
+            height,
+            streams: metadata.streams,
+            format: metadata.format
+        };
+    } catch (error) {
+        console.error(`💥 [${requestId}] Failed to get video metadata:`, error.message);
+        throw new Error(`Failed to get video metadata: ${error.message}`);
+    }
+}
+
+/**
+ * Builds FFmpeg command for special reel generation
+ * 
+ * @param {Object} params - Command parameters
+ * @returns {Array} FFmpeg command arguments
+ */
+export function buildSpecialReelFFmpegCommand({ introVideoPath, introTextPath, middleImgPath, middleTextPath, middleDuration, outroVideoPath, outputPath, requestId, targetWidth, targetHeight, introMeta, outroMeta }) {
+    console.log(`🔧 [${requestId}] Building special reel FFmpeg command...`);
+
+    // Limit intro and outro video durations to prevent excessive processing
+    const maxIntroDuration = Math.min(introMeta.duration, 10); // Max 10 seconds
+    const maxOutroDuration = Math.min(outroMeta.duration, 10); // Max 10 seconds
+
+    const command = [
+        '-y', // Overwrite output file
+        '-t', maxIntroDuration.toString(), '-i', introVideoPath, // Limit intro duration
+        '-loop', '1', '-framerate', '30', '-i', middleImgPath,
+        '-t', maxOutroDuration.toString(), '-i', outroVideoPath // Limit outro duration
+    ];
+
+    // Add text overlay inputs if they exist
+    let inputIndex = 3;
+    if (introTextPath) {
+        command.push('-loop', '1', '-framerate', '30', '-i', introTextPath);
+        inputIndex++;
+    }
+    if (middleTextPath) {
+        command.push('-loop', '1', '-framerate', '30', '-i', middleTextPath);
+        inputIndex++;
+    }
+
+    // Build filter complex for special reel
+    const filterComplex = buildSpecialReelFilterComplex({
+        hasIntroText: !!introTextPath,
+        hasMiddleText: !!middleTextPath,
+        middleDuration,
+        requestId,
+        targetWidth,
+        targetHeight
+    });
+
+    command.push('-filter_complex', filterComplex);
+    command.push('-map', '[vfinal]');
+    command.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'fast'); // Use fast preset for better performance
+    command.push(outputPath);
+
+    console.log(`🔧 [${requestId}] FFmpeg command: ffmpeg ${command.join(' ')}`);
+    return command;
+}
+
+/**
+ * Builds FFmpeg filter complex for special reel generation
+ * 
+ * @param {Object} params - Filter parameters
+ * @returns {string} Filter complex string
+ */
+export function buildSpecialReelFilterComplex({ hasIntroText, hasMiddleText, middleDuration, requestId, targetWidth, targetHeight }) {
+    console.log(`🎬 [${requestId}] Building special reel filter complex...`);
+
+    // Inputs: 0=intro_video, 1=middle_img, 2=outro_video, 3=intro_text?, 4=middle_text?
+    let inputIdx = 3;
+    const introTextIdx = hasIntroText ? inputIdx++ : -1;
+    const middleTextIdx = hasMiddleText ? inputIdx++ : -1;
+
+    // Use intro video dimensions as target
+    const outW = targetWidth;
+    const outH = targetHeight;
+    const fps = 30;
+
+    // Optimize Ken Burns parameters - use more reasonable scaling
+    const scaleMultiplier = 1.2; // Only 20% larger than target for smoother processing
+    const scaleW = Math.round(outW * scaleMultiplier);
+    const scaleH = Math.round(outH * scaleMultiplier);
+    const zStart = 1.0;
+    const zStep = 0.0005; // Slower zoom for smoother effect
+    const middleFrames = Math.max(1, Math.round(middleDuration * fps));
+    const dx = 1; // Slower pan for smoother effect
+
+    console.log(`📐 [${requestId}] Using dimensions: ${outW}x${outH}, Ken Burns scale: ${scaleW}x${scaleH}`);
+
+    let filters = [
+        // Keep intro video at original resolution (no scaling needed)
+        `[0:v]fps=${fps},format=yuv420p,setsar=1:1[intro_scaled]`,
+
+        // Scale outro video to match intro dimensions
+        `[2:v]scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},fps=${fps},format=yuv420p,setsar=1:1[outro_scaled]`,
+
+        // Apply optimized Ken Burns effect to middle image
+        `[1:v]scale=${scaleW}:${scaleH}:force_original_aspect_ratio=increase,crop=${scaleW}:${scaleH},` +
+        `zoompan=z='${zStart}+${zStep}*on':d=${middleFrames}:x='on*${dx}':y='(ih-oh)/2':s=${outW}x${outH}:fps=${fps},format=yuv420p,setsar=1:1[middle_kb]`
+    ].join(";");
+
+    // Apply text overlays if provided
+    const introFinal = hasIntroText ? "intro_with_text" : "intro_scaled";
+    const middleFinal = hasMiddleText ? "middle_with_text" : "middle_kb";
+
+    if (hasIntroText) {
+        filters += `;[intro_scaled][${introTextIdx}:v]overlay=x=(W-w)/2:y=(H-h)/2:eval=init,format=yuv420p,setsar=1:1[intro_with_text]`;
+    }
+    if (hasMiddleText) {
+        filters += `;[middle_kb][${middleTextIdx}:v]overlay=x=(W-w)/2:y=${Math.round(outH * 0.42)}:eval=init,format=yuv420p,setsar=1:1[middle_with_text]`;
+    }
+
+    // Concatenate all three parts - now all inputs have consistent format
+    filters += `;[${introFinal}][${middleFinal}][outro_scaled]concat=n=3:v=1:a=0,format=yuv420p,setsar=1:1[vfinal]`;
+
+    console.log(`✅ [${requestId}] Special reel filter complex built successfully`);
+    return filters;
 }
