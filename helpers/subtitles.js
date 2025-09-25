@@ -124,58 +124,80 @@ async function createSubtitleTimingWithWhisper(audioPath, text, srtPath, request
 
     // Create a Python script to use faster-whisper
     const scriptPath = audioPath.replace('.wav', '_whisper.py');
-    const scriptContent = `
-import sys
-from faster_whisper import WhisperModel
-import datetime
 
-def create_srt_from_audio(audio_path, target_text, output_path):
-    # Load the model (using base model for speed)
-    model = WhisperModel("base", device="cpu", compute_type="int8")
-    
-    # Transcribe the audio
-    segments, info = model.transcribe(audio_path, word_timestamps=True)
-    
-    # Create SRT content
-    srt_content = ""
-    subtitle_index = 1
-    
-           # Convert segments to SRT format
-           for segment in segments:
-               start_time = datetime.timedelta(seconds=segment.start)
-               end_time = datetime.timedelta(seconds=segment.end)
-               
-               # Format time as SRT requires (HH:MM:SS,mmm)
-               start_srt = str(start_time).replace('.', ',')
-               if len(start_srt.split(',')[0]) < 8:  # Add leading zeros if needed
-                   start_srt = '0' + start_srt
-               start_srt = start_srt[:12]  # Ensure proper length
-               
-               end_srt = str(end_time).replace('.', ',')
-               if len(end_srt.split(',')[0]) < 8:  # Add leading zeros if needed
-                   end_srt = '0' + end_srt
-               end_srt = end_srt[:12]  # Ensure proper length
-        
-        # Use the target text for the subtitle content
-        srt_content += f"{subtitle_index}\\n"
-        srt_content += f"{start_srt} --> {end_srt}\\n"
-        srt_content += f"{target_text}\\n\\n"
-        
-        subtitle_index += 1
-    
-    # Write SRT file
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(srt_content)
+    // Generate Python script with proper indentation
+    const scriptLines = [
+        'import sys',
+        'from faster_whisper import WhisperModel',
+        'import datetime',
+        '',
+        'def create_srt_from_audio(audio_path, target_text, output_path):',
+        '    # Load the model (using base model for speed)',
+        '    model = WhisperModel("base", device="cpu", compute_type="int8")',
+        '    ',
+        '    # Transcribe the audio',
+        '    segments, info = model.transcribe(audio_path, word_timestamps=True)',
+        '    ',
+        '    # Create SRT content',
+        '    srt_content = ""',
+        '    subtitle_index = 1',
+        '    ',
+        '    # Split target text into Instagram-friendly segments (3-5 words each)',
+        '    words = target_text.split()',
+        '    segment_duration = 1.5  # Each segment shows for 1.5 seconds',
+        '    max_words_per_segment = 4  # Maximum 4 words per segment for Instagram readability',
+        '    ',
+        '    segments_list = []',
+        '    current_segment = []',
+        '    segment_index = 1',
+        '    ',
+        '    for i, word in enumerate(words):',
+        '        current_segment.append(word)',
+        '        ',
+        '        # Create segment when we reach max words or end of text',
+        '        if len(current_segment) >= max_words_per_segment or i == len(words) - 1:',
+        '            start_time = (segment_index - 1) * segment_duration',
+        '            end_time = start_time + segment_duration',
+        '            ',
+        '            # Format time as SRT requires (HH:MM:SS,mmm)',
+        '            start_srt = str(datetime.timedelta(seconds=start_time)).replace(".", ",")',
+        '            if len(start_srt.split(",")[0]) < 8:  # Add leading zeros if needed',
+        '                start_srt = "0" + start_srt',
+        '            # Ensure we have milliseconds part',
+        '            if "," not in start_srt:',
+        '                start_srt += ",000"',
+        '            start_srt = start_srt[:12]  # Ensure proper length',
+        '            ',
+        '            end_srt = str(datetime.timedelta(seconds=end_time)).replace(".", ",")',
+        '            if len(end_srt.split(",")[0]) < 8:  # Add leading zeros if needed',
+        '                end_srt = "0" + end_srt',
+        '            # Ensure we have milliseconds part',
+        '            if "," not in end_srt:',
+        '                end_srt += ",000"',
+        '            end_srt = end_srt[:12]  # Ensure proper length',
+        '        ',
+        '            # Use the segmented text for the subtitle content',
+        '            srt_content += f"{segment_index}\\n"',
+        '            srt_content += f"{start_srt} --> {end_srt}\\n"',
+        '            srt_content += f"{\' \'.join(current_segment)}\\n\\n"',
+        '            ',
+        '            current_segment = []',
+        '            segment_index += 1',
+        '    ',
+        '    # Write SRT file',
+        '    with open(output_path, "w", encoding="utf-8") as f:',
+        '        f.write(srt_content)',
+        '',
+        'if __name__ == "__main__":',
+        '    audio_path = sys.argv[1]',
+        '    target_text = sys.argv[2]',
+        '    output_path = sys.argv[3]',
+        '    ',
+        '    create_srt_from_audio(audio_path, target_text, output_path)',
+        '    print("SRT file created successfully")'
+    ];
 
-if __name__ == "__main__":
-    audio_path = sys.argv[1]
-    target_text = sys.argv[2]
-    output_path = sys.argv[3]
-    
-    create_srt_from_audio(audio_path, target_text, output_path)
-    print("SRT file created successfully")
-`;
-
+    const scriptContent = scriptLines.join('\n');
     await fsp.writeFile(scriptPath, scriptContent, 'utf8');
 
     try {
@@ -398,20 +420,23 @@ export async function generateSubtitledVideo({ videoURL, text, outputPath, reque
         fs.mkdirSync(tempDir, { recursive: true });
     }
 
+    // Declare variables in outer scope so they're available in catch block
+    let videoPath, audioPath, srtPath;
+
     try {
         // Download video
         console.log(`📥 [${requestId}] Downloading video...`);
-        const videoPath = path.join(tempDir, 'input.mp4');
+        videoPath = path.join(tempDir, 'input.mp4');
         await downloadVideo(videoURL, videoPath, requestId);
 
         // Extract audio
         console.log(`🎵 [${requestId}] Extracting audio...`);
-        const audioPath = path.join(tempDir, 'audio.wav');
+        audioPath = path.join(tempDir, 'audio.wav');
         await extractAudio(videoPath, audioPath, requestId);
 
         // Create subtitle timing with aeneas
         console.log(`📝 [${requestId}] Creating subtitle timing...`);
-        const srtPath = path.join(tempDir, 'subtitles.srt');
+        srtPath = path.join(tempDir, 'subtitles.srt');
         console.log(`📝 [${requestId}] About to call createSubtitleTiming with:`);
         console.log(`   • audioPath: ${audioPath}`);
         console.log(`   • text: "${text}"`);
@@ -450,8 +475,8 @@ export async function generateSubtitledVideo({ videoURL, text, outputPath, reque
         // Clean up temporary files on error
         console.log(`🧹 [${requestId}] SKIPPING error cleanup for debugging - temp files preserved`);
         console.log(`🧹 [${requestId}] Temp directory: ${tempDir}`);
-        console.log(`🧹 [${requestId}] SRT file: ${srtPath}`);
-        console.log(`🧹 [${requestId}] Video file: ${videoPath}`);
+        console.log(`🧹 [${requestId}] SRT file: ${srtPath || 'not defined'}`);
+        console.log(`🧹 [${requestId}] Video file: ${videoPath || 'not defined'}`);
         console.log(`🧹 [${requestId}] Output file: ${outputPath}`);
         throw error;
     }
