@@ -91,8 +91,17 @@ export const uploadHandler = async (req, res, config) => {
     console.log(`📤 [${requestId}] Starting file upload...`);
 
     try {
-        // Configure multer for this request
+        // Configure multer for this request with error handling
         const uploadDir = path.join(config.MEDIA_DIR, 'storage');
+
+        // Ensure storage directory exists
+        try {
+            await fsp.access(uploadDir);
+        } catch (error) {
+            console.log(`📁 [${requestId}] Creating storage directory: ${uploadDir}`);
+            await fsp.mkdir(uploadDir, { recursive: true });
+        }
+
         const upload = configureMulter(uploadDir);
 
         // Handle single file upload
@@ -191,10 +200,10 @@ export const deleteHandler = async (req, res, config) => {
             });
         }
 
-        // Find the file in storage directory
+        // Find the file in storage directory with exact UUID matching
         const storageDir = path.join(config.MEDIA_DIR, 'storage');
         const files = await fsp.readdir(storageDir);
-        const targetFile = files.find(file => file.startsWith(fileId));
+        const targetFile = files.find(f => f.startsWith(fileId + '.')); // exact UUID + dot
 
         if (!targetFile) {
             console.log(`❌ [${requestId}] File not found: ${fileId}`);
@@ -206,12 +215,26 @@ export const deleteHandler = async (req, res, config) => {
 
         const filePath = path.join(storageDir, targetFile);
 
-        // Get file stats before deletion
-        const stats = await fsp.stat(filePath);
-        const fileSize = stats.size;
+        // Get file stats before deletion with error handling
+        let fileSize = 0;
+        try {
+            const stats = await fsp.stat(filePath);
+            fileSize = stats.size;
+        } catch (statError) {
+            console.warn(`⚠️ [${requestId}] Could not get file stats: ${statError.message}`);
+            // Continue with deletion even if stats fail
+        }
 
-        // Delete the file
-        await fsp.unlink(filePath);
+        // Delete the file with robust error handling
+        try {
+            await fsp.unlink(filePath);
+        } catch (unlinkError) {
+            console.error(`💥 [${requestId}] Failed to delete file: ${unlinkError.message}`);
+            return res.status(500).json({
+                error: 'File deletion failed',
+                message: 'Could not delete the file from storage'
+            });
+        }
 
         console.log(`✅ [${requestId}] File deleted successfully:`);
         console.log(`   • File ID: ${fileId}`);
@@ -230,12 +253,13 @@ export const deleteHandler = async (req, res, config) => {
         });
 
     } catch (error) {
-        console.error(`💥 [${requestId}] Delete error:`, error.message);
+        console.error(`💥 [${requestId}] Unexpected delete error:`, error.message);
 
+        // Handle directory read errors
         if (error.code === 'ENOENT') {
             return res.status(404).json({
-                error: 'File not found',
-                message: `No file found with ID: ${fileId}`
+                error: 'Storage directory not found',
+                message: 'Storage service is not properly configured'
             });
         }
 

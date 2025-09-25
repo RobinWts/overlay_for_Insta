@@ -286,6 +286,11 @@ async function testStorageDeleteEndpoint() {
             name: 'Empty file ID',
             fileId: '',
             shouldSucceed: false
+        },
+        {
+            name: 'File ID with partial match (should not match)',
+            fileId: '12345678-1234-1234-1234-123456789ab', // Missing last character
+            shouldSucceed: false
         }
     ];
 
