@@ -166,6 +166,159 @@ async function test2SlidesReelEndpoint() {
 }
 
 /**
+ * Test the storage upload endpoint
+ */
+async function testStorageUploadEndpoint() {
+    console.log('📤 Testing storage upload endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid audio file upload (MP3)',
+            fileType: 'audio',
+            fileName: 'test-audio.mp3',
+            mimeType: 'audio/mpeg',
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid video file upload (MP4)',
+            fileType: 'video',
+            fileName: 'test-video.mp4',
+            mimeType: 'video/mp4',
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid audio file upload (WAV)',
+            fileType: 'audio',
+            fileName: 'test-audio.wav',
+            mimeType: 'audio/wav',
+            shouldSucceed: true
+        },
+        {
+            name: 'Invalid file type (text file)',
+            fileType: 'text',
+            fileName: 'test.txt',
+            mimeType: 'text/plain',
+            shouldSucceed: false
+        },
+        {
+            name: 'Missing file in request',
+            fileType: 'none',
+            fileName: null,
+            mimeType: null,
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL('/store/upload', BASE_URL);
+            console.log(`   URL: ${url.toString()}`);
+
+            let response;
+            if (testCase.fileType === 'none') {
+                // Test without file
+                response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'X-API-Key': API_KEY }
+                });
+            } else {
+                // Create a mock file buffer for testing
+                const mockFileBuffer = Buffer.from('mock file content for testing');
+
+                const formData = new FormData();
+                const blob = new Blob([mockFileBuffer], { type: testCase.mimeType });
+                formData.append('file', blob, testCase.fileName);
+
+                response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'X-API-Key': API_KEY },
+                    body: formData
+                });
+            }
+
+            const responseData = await response.json();
+
+            if (testCase.shouldSucceed && response.ok) {
+                console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
+
+                // Store the file ID for deletion test
+                if (responseData.id) {
+                    global.testFileId = responseData.id;
+                }
+            } else if (!testCase.shouldSucceed && !response.ok) {
+                console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else {
+                console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
+            }
+        } catch (error) {
+            console.log(`   💥 Exception: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
+/**
+ * Test the storage delete endpoint
+ */
+async function testStorageDeleteEndpoint() {
+    console.log('🗑️ Testing storage delete endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Delete existing file (if available)',
+            fileId: global.testFileId || 'test-uuid-that-does-not-exist',
+            shouldSucceed: !!global.testFileId
+        },
+        {
+            name: 'Delete non-existent file',
+            fileId: '00000000-0000-0000-0000-000000000000',
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid file ID format',
+            fileId: 'invalid-id-format',
+            shouldSucceed: false
+        },
+        {
+            name: 'Empty file ID',
+            fileId: '',
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL(`/store/${testCase.fileId}`, BASE_URL);
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                method: 'DELETE',
+                headers: { 'X-API-Key': API_KEY }
+            });
+
+            const responseData = await response.json();
+
+            if (testCase.shouldSucceed && response.ok) {
+                console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
+            } else if (!testCase.shouldSucceed && !response.ok) {
+                console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else {
+                console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
+            }
+        } catch (error) {
+            console.log(`   💥 Exception: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
+/**
  * Test the 3slidesReel endpoint
  */
 async function test3SlidesReelEndpoint() {
@@ -419,6 +572,8 @@ async function runTests() {
         await testOverlayEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
+        await testStorageUploadEndpoint();
+        await testStorageDeleteEndpoint();
     }
 
     console.log('='.repeat(50));
@@ -430,4 +585,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };

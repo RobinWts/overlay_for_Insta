@@ -22,6 +22,7 @@ import { healthCheck } from './endpoints/health.js';
 import { overlayHandler } from './endpoints/overlay.js';
 import { reelHandler } from './endpoints/reel.js';
 import { reel3Handler } from './endpoints/3slidesReel.js';
+import { uploadHandler, deleteHandler } from './endpoints/storage.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -66,7 +67,8 @@ const config = {
 
 // Ensure directories exist
 const ensureDirectories = () => {
-  const directories = [MEDIA_DIR, REELS_DIR, TMP_DIR, BG_DIR];
+  const STORAGE_DIR = path.join(MEDIA_DIR, 'storage');
+  const directories = [MEDIA_DIR, REELS_DIR, TMP_DIR, BG_DIR, STORAGE_DIR];
   for (const dir of directories) {
     try {
       if (!fs.existsSync(dir)) {
@@ -161,6 +163,51 @@ app.get('/3slidesReel', validateApiKey(config), (req, res) => reel3Handler(req, 
  */
 app.get('/overlay', validateApiKey(config), overlayHandler);
 
+/**
+ * File upload endpoint for local storage service
+ * 
+ * POST /store/upload
+ * 
+ * Accepts audio and video files for storage with the following features:
+ * - File size limit: 100MB
+ * - Supported formats: MP3, WAV, OGG, AAC, M4A, FLAC (audio) and MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime (video)
+ * - Returns unique file ID and public URL for accessing the file
+ * - Files are stored in /media/storage/ directory
+ * 
+ * Request body: multipart/form-data with 'file' field
+ * 
+ * Response:
+ * - success: boolean indicating upload success
+ * - id: unique file identifier (UUID)
+ * - filename: generated filename
+ * - originalName: original filename from upload
+ * - mimeType: detected MIME type
+ * - size: file size in bytes
+ * - url: public URL for accessing the file
+ * - uploadTime: ISO timestamp of upload
+ */
+app.post('/store/upload', validateApiKey(config), (req, res) => uploadHandler(req, res, config));
+
+/**
+ * File deletion endpoint for local storage service
+ * 
+ * DELETE /store/:id
+ * 
+ * Deletes a previously uploaded file by its unique ID.
+ * 
+ * Parameters:
+ * - id (required): UUID of the file to delete
+ * 
+ * Response:
+ * - success: boolean indicating deletion success
+ * - id: file identifier that was deleted
+ * - filename: name of the deleted file
+ * - size: size of the deleted file in bytes
+ * - deletedAt: ISO timestamp of deletion
+ * - message: confirmation message
+ */
+app.delete('/store/:id', validateApiKey(config), (req, res) => deleteHandler(req, res, config));
+
 // === SERVER STARTUP ===
 
 // Start the Express server and log the port
@@ -184,6 +231,8 @@ app.listen(PORT, () => {
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
+  console.log(`   POST /store/upload - File upload service`);
+  console.log(`   DELETE /store/:id - File deletion service`);
   console.log(`   GET  /media/* - Static media files`);
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);

@@ -22,7 +22,7 @@ COPY --chown=node:node endpoints/ ./endpoints/
 COPY --chown=node:node middleware/ ./middleware/
 
 # Verzeichnisse (Image-seitig) + Ownership
-RUN mkdir -p /app/media/reels /app/media/tmp /app/assets/reels_bg \
+RUN mkdir -p /app/media/reels /app/media/tmp /app/media/storage /app/assets/reels_bg \
     && chown -R node:node /app/media /app/assets
 
 # Entrypoint-Skript
