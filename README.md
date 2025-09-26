@@ -44,7 +44,7 @@ services:
     restart: unless-stopped
     command:
       - "--configfile=/traefik/traefik.yml"
-      - "--certificatesresolvers.le-http.acme.email=robin@glavegbr.de"
+      - "--certificatesresolvers.le-http.acme.email=yourmail@host.tld"
     ports:
       - "80:80"
       - "443:443"
