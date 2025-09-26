@@ -140,28 +140,27 @@ const processMultipleVideos = async (inputPaths, outputPath, requestId) => {
         filterComplex += `[v0][v1]xfade=transition=fade:duration=${fadeDuration}:offset=${offset1}[vout];`;
         filterComplex += `[a0][a1]acrossfade=d=${fadeDuration}[aout]`;
     } else if (inputPaths.length === 3) {
-        // Three videos: use concat filter with proper timing
-        // Create individual video segments with proper timing
-        filterComplex += `[v0]trim=duration=${metadata[0].duration - fadeDuration}[v0_trim];`;
-        filterComplex += `[v1]trim=start=${fadeDuration},setpts=PTS-STARTPTS[v1_trim];`;
-        filterComplex += `[v2]trim=start=${fadeDuration},setpts=PTS-STARTPTS[v2_trim];`;
+        // Three videos: create overlapping segments for fade transitions
+        const offset1 = Math.max(0, metadata[0].duration - fadeDuration);
+        const offset2 = Math.max(0, metadata[0].duration + metadata[1].duration - 2 * fadeDuration);
 
-        // Concatenate the trimmed videos
-        filterComplex += `[v0_trim][v1_trim][v2_trim]concat=n=3:v=1:a=0[vout];`;
+        // Apply xfade transitions directly without trim (to preserve frame rates)
+        filterComplex += `[v0][v1]xfade=transition=fade:duration=${fadeDuration}:offset=${offset1}[v01];`;
+        filterComplex += `[v01][v2]xfade=transition=fade:duration=${fadeDuration}:offset=${offset2}[vout];`;
 
         // Audio crossfades
         filterComplex += `[a0][a1]acrossfade=d=${fadeDuration}[a01];`;
         filterComplex += `[a01][a2]acrossfade=d=${fadeDuration}[aout]`;
     } else if (inputPaths.length === 4) {
-        // Four videos: use concat filter with proper timing
-        // Create individual video segments with proper timing
-        filterComplex += `[v0]trim=duration=${metadata[0].duration - fadeDuration}[v0_trim];`;
-        filterComplex += `[v1]trim=start=${fadeDuration},setpts=PTS-STARTPTS[v1_trim];`;
-        filterComplex += `[v2]trim=start=${fadeDuration},setpts=PTS-STARTPTS[v2_trim];`;
-        filterComplex += `[v3]trim=start=${fadeDuration},setpts=PTS-STARTPTS[v3_trim];`;
+        // Four videos: create overlapping segments for fade transitions
+        const offset1 = Math.max(0, metadata[0].duration - fadeDuration);
+        const offset2 = Math.max(0, metadata[0].duration + metadata[1].duration - 2 * fadeDuration);
+        const offset3 = Math.max(0, metadata[0].duration + metadata[1].duration + metadata[2].duration - 3 * fadeDuration);
 
-        // Concatenate the trimmed videos
-        filterComplex += `[v0_trim][v1_trim][v2_trim][v3_trim]concat=n=4:v=1:a=0[vout];`;
+        // Apply xfade transitions directly without trim (to preserve frame rates)
+        filterComplex += `[v0][v1]xfade=transition=fade:duration=${fadeDuration}:offset=${offset1}[v01];`;
+        filterComplex += `[v01][v2]xfade=transition=fade:duration=${fadeDuration}:offset=${offset2}[v012];`;
+        filterComplex += `[v012][v3]xfade=transition=fade:duration=${fadeDuration}:offset=${offset3}[vout];`;
 
         // Audio crossfades
         filterComplex += `[a0][a1]acrossfade=d=${fadeDuration}[a01];`;
