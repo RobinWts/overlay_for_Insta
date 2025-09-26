@@ -28,6 +28,8 @@ The application follows a clean modular architecture with clear separation of co
 - **Runtime**: Node.js >= 20.3.0 (Sharp requirement)
 - **Framework**: Express.js for HTTP server with JSON body parsing
 - **Image Processing**: Sharp (libvips-based) for high-performance image manipulation
+- **File Upload**: Multer for handling multipart/form-data file uploads
+- **UUID Generation**: uuid package for unique file identifiers
 - **HTTP Client**: node-fetch for fetching external images
 - **Text Rendering**: Custom SVG generation with precise typography control
 - **Environment Management**: dotenv for configuration management
@@ -77,6 +79,27 @@ GET /healthz
 ```
 
 **Response**: JSON status with server information
+
+#### File Storage Service
+```
+POST /store/upload
+```
+
+**Parameters**:
+- Request body: multipart/form-data with 'file' field
+- File types: Audio (MP3, WAV, OGG, AAC, M4A, FLAC) and Video (MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime)
+- File size limit: 100MB
+
+**Response**: JSON with file information including unique ID and public URL
+
+```
+DELETE /store/:id
+```
+
+**Parameters**:
+- id (required): UUID of the file to delete
+
+**Response**: JSON confirmation of deletion with file details
 
 #### Media Serving
 ```
@@ -129,7 +152,9 @@ overlay_for_Insta/
 ├── endpoints/             # Endpoint handlers
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint
-│   └── reel.js            # Video reel endpoint
+│   ├── reel.js            # Video reel endpoint
+│   ├── 3slidesReel.js      # Three-slide reel endpoint
+│   └── storage.js         # File storage service endpoints
 ├── middleware/            # Express middleware
 │   └── auth.js            # API key validation middleware
 ├── test-server.js         # Comprehensive test suite
@@ -143,7 +168,8 @@ overlay_for_Insta/
 ├── README.md             # Human-readable documentation
 ├── media/                # Media directory (created at runtime)
 │   ├── reels/            # Generated reels storage
-│   └── tmp/              # Temporary files
+│   ├── tmp/              # Temporary files
+│   └── storage/           # File storage service directory
 ├── assets/               # Static assets directory
 │   └── reels_bg/         # Background assets for reels
 ├── notes/

@@ -1,5 +1,104 @@
 # Development History
 
+## 2025-09-25 - Local Storage Service Implementation
+
+### Major Improvements
+- **File Upload Service**: Implemented `POST /store/upload` endpoint for audio and video file uploads
+- **File Deletion Service**: Implemented `DELETE /store/:id` endpoint for file management
+- **File Type Validation**: Comprehensive validation for audio and video file types
+- **Unique File Naming**: UUID-based file naming system to prevent conflicts
+- **File Size Limits**: 100MB maximum file size with proper error handling
+- **Storage Management**: Organized file storage in dedicated `/media/storage/` directory
+
+### Technical Changes
+1. **New Dependencies Added**:
+   - `multer`: For handling multipart/form-data file uploads
+   - `uuid`: For generating unique file identifiers
+   - Both dependencies properly documented and included in Dockerfile
+
+2. **Storage Endpoint Implementation**:
+   - `endpoints/storage.js`: Complete storage service with upload and delete handlers
+   - File type validation for audio (MP3, WAV, OGG, AAC, M4A, FLAC) and video (MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime)
+   - UUID-based file naming with original file extension preservation
+   - Comprehensive error handling for all failure scenarios
+
+3. **Server Integration**:
+   - Added storage routes to `server.js` with proper API key authentication
+   - Updated directory creation to include storage directory
+   - Enhanced server startup logging to include new endpoints
+
+4. **Testing & Documentation**:
+   - Added comprehensive test cases to `test-server.js` for upload and delete operations
+   - Created `example-storage.js` with practical usage demonstrations
+   - Updated project documentation with storage service details
+
+5. **Docker Support**:
+   - Updated Dockerfile to include storage directory creation
+   - All new dependencies automatically included via package.json
+
+### API Endpoints Added
+
+#### POST /store/upload
+- **Purpose**: Upload audio and video files for storage
+- **Request**: multipart/form-data with 'file' field
+- **Supported Types**: Audio (MP3, WAV, OGG, AAC, M4A, FLAC) and Video (MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime)
+- **File Size Limit**: 100MB
+- **Response**: JSON with file ID, filename, original name, MIME type, size, public URL, and upload timestamp
+
+#### DELETE /store/:id
+- **Purpose**: Delete previously uploaded files by UUID
+- **Parameters**: id (required) - UUID of the file to delete
+- **Response**: JSON confirmation with file details and deletion timestamp
+- **Validation**: Ensures UUID format is valid before attempting deletion
+
+### Key Features
+- **Security**: API key authentication required for all operations
+- **File Validation**: Only allows audio and video files, rejects other types
+- **Unique Naming**: UUID-based filenames prevent naming conflicts
+- **Error Handling**: Comprehensive error responses for all failure scenarios
+- **Logging**: Detailed request logging with unique request IDs
+- **Storage Organization**: Files stored in organized `/media/storage/` directory
+- **Public Access**: Files accessible via `/media/storage/` URL path
+
+### Files Created
+- `endpoints/storage.js` - Storage service endpoint handlers (248 lines)
+- `example-storage.js` - Usage examples and demonstrations (202 lines)
+
+### Files Modified
+- `server.js` - Added storage routes and directory management
+- `package.json` - Added multer and uuid dependencies, new example script
+- `Dockerfile` - Added storage directory creation
+- `test-server.js` - Added comprehensive storage endpoint tests
+- `notes/project_overview.md` - Updated with storage service documentation
+
+### Testing Results
+- ✅ File upload functionality working correctly
+- ✅ File deletion functionality working correctly
+- ✅ File type validation working properly
+- ✅ Error handling for invalid files and missing parameters
+- ✅ UUID generation and file naming working correctly
+- ✅ API key authentication working for all endpoints
+- ✅ All tests pass successfully
+- ✅ No linting errors introduced
+
+### Usage Examples
+```bash
+# Upload a file
+curl -X POST -H "X-API-Key: your-api-key" \
+  -F "file=@audio.mp3" \
+  http://localhost:8080/store/upload
+
+# Delete a file
+curl -X DELETE -H "X-API-Key: your-api-key" \
+  http://localhost:8080/store/12345678-1234-1234-1234-123456789abc
+
+# Run tests
+npm test
+
+# Run storage examples
+npm run example:storage
+```
+
 ## 2025-09-21 - Major Code Refactoring: Modular Architecture
 
 ### Major Improvements
