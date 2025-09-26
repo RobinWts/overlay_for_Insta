@@ -7,7 +7,7 @@
 
 import sharp from 'sharp';
 import fetch from 'node-fetch';
-import { makeSvg } from '../helpers.js';
+import { makeSvg } from '../helpers/image-helper.js';
 
 /**
  * Main API endpoint for image overlay generation

@@ -10,7 +10,10 @@ This service can be easily integrated into existing Docker Compose setups by cop
 
 **Required Files:**
 - `server.js` - Main server application
-- `helpers.js` - Shared utility functions
+- `helpers/` - Organized helper modules directory
+  - `image-helper.js` - Image processing and text overlay generation
+  - `video-helper.js` - Video generation and FFmpeg operations
+  - `helper.js` - Core utility functions and shared operations
 - `endpoints/` - Endpoint handlers directory
   - `health.js` - Health check endpoint
   - `overlay.js` - Image overlay endpoint

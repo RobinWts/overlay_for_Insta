@@ -7,7 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { generate3SlidesReel } from '../helpers.js';
+import { generate3SlidesReel } from '../helpers/video-helper.js';
 
 /**
  * 3 Slides Reel endpoint handler

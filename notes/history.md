@@ -1,5 +1,63 @@
 # Development History
 
+## 2025-09-26 - Helper Module Refactoring
+
+### Major Improvements
+- **Modular Architecture**: Refactored monolithic `helpers.js` into organized helper modules
+- **Improved Maintainability**: Functions now grouped by functionality for better code organization
+- **Enhanced Developer Experience**: Easier to locate and modify specific functionality
+- **Preserved Functionality**: All existing features maintained with comprehensive testing
+
+### Technical Changes
+1. **New Helper Module Structure**:
+   - `helpers/image-helper.js`: Image processing and text overlay generation
+     - `makeSvg()`: SVG overlay generation with intelligent text wrapping
+     - `downloadImage()`: Image downloading functionality
+   - `helpers/video-helper.js`: Video generation and FFmpeg operations
+     - `buildFFmpegCommand()`: FFmpeg command building for 2-slide videos
+     - `build3SlidesFFmpegCommand()`: FFmpeg command building for 3-slide videos
+     - `buildFilterComplex()`: Filter complex generation for Ken Burns effects
+     - `build3SlidesFilterComplex()`: 3-slide filter complex generation
+     - `generate2SlidesReel()`: Complete 2-slide reel generation
+     - `generate3SlidesReel()`: Complete 3-slide reel generation
+   - `helpers/helper.js`: Core utility functions and shared operations
+     - `generateTextOverlay()`: Text overlay PNG generation for videos
+     - `execFFmpeg()`: FFmpeg execution wrapper
+
+2. **Import Statement Updates**:
+   - `endpoints/overlay.js`: Updated to import from `helpers/image-helper.js`
+   - `endpoints/reel.js`: Updated to import from `helpers/video-helper.js`
+   - `endpoints/3slidesReel.js`: Updated to import from `helpers/video-helper.js`
+
+3. **Dockerfile Updates**:
+   - Updated to copy `helpers/` directory instead of single `helpers.js` file
+   - Maintained proper file ownership and permissions
+
+4. **Documentation Updates**:
+   - **README.md**: Updated file structure to reflect new helper organization
+   - **notes/project_overview.md**: Updated architecture description and file structure
+   - **File Structure**: Now shows organized `/helpers` directory with three focused modules
+
+### Code Quality Improvements
+- **Better Separation of Concerns**: Image processing, video generation, and core utilities are now clearly separated
+- **Reduced File Size**: Each helper file is focused and manageable
+- **Improved Readability**: Functions are easier to locate and understand
+- **Maintained Type Safety**: All existing type safety measures preserved
+- **Preserved Error Handling**: All error handling and security measures maintained
+
+### Testing Results
+- **Comprehensive Testing**: All functionality verified through complete test suite
+- **No Breaking Changes**: All existing endpoints continue to work exactly as before
+- **Performance Maintained**: No performance impact from refactoring
+- **Linting Clean**: No linting errors in any of the new helper modules
+
+### Benefits Achieved
+- **Enhanced Maintainability**: Easier to modify specific functionality without affecting other areas
+- **Improved Code Organization**: Clear structure makes the codebase more professional
+- **Better Developer Experience**: Easier to understand and work with the codebase
+- **Future-Proof Architecture**: Modular structure supports easier feature additions
+- **Preserved Functionality**: Zero impact on existing API endpoints and functionality
+
 ## 2025-09-25 - Local Storage Service Implementation
 
 ### Major Improvements

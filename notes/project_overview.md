@@ -20,7 +20,10 @@ The application follows a clean modular architecture with clear separation of co
 
 - **Server Setup** (`server.js`): Express configuration, middleware setup, and route definitions
 - **Endpoint Handlers** (`endpoints/`): Business logic for each API endpoint
-- **Shared Utilities** (`helpers.js`): Reusable functions across multiple endpoints
+- **Helper Modules** (`helpers/`): Organized utility functions by functionality
+  - `image-helper.js`: Image processing and text overlay generation
+  - `video-helper.js`: Video generation and FFmpeg operations
+  - `helper.js`: Core utility functions and shared operations
 - **Middleware** (`middleware/`): Express middleware for authentication and other concerns
 - **Configuration**: Environment-based configuration with dependency injection
 
@@ -148,7 +151,10 @@ GET /media/*
 ```
 overlay_for_Insta/
 ├── server.js              # Main Express server (configuration & routing only)
-├── helpers.js             # Shared utility functions
+├── helpers/               # Organized helper modules
+│   ├── image-helper.js    # Image processing and text overlay generation
+│   ├── video-helper.js    # Video generation and FFmpeg operations
+│   └── helper.js          # Core utility functions and shared operations
 ├── endpoints/             # Endpoint handlers
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint

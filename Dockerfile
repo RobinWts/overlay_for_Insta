@@ -17,7 +17,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 # app & assets
-COPY --chown=node:node server.js helpers.js Logo.svg ./
+COPY --chown=node:node server.js Logo.svg ./
+COPY --chown=node:node helpers/ ./helpers/
 COPY --chown=node:node endpoints/ ./endpoints/
 COPY --chown=node:node middleware/ ./middleware/
 
