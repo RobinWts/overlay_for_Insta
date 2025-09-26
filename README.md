@@ -2,7 +2,7 @@
 
 A Node.js server that creates Instagram-style image overlays with customizable title and source text. Perfect for social media content generation and automated image processing. Originally developed for vServer-hosted n8n workflows.
 Additionally it has a local storage that can (if routed to the internet) provide publicURLs to files for other services (like Instagram) and local processing.
-Video-Reel creation is available for 2 and 3 sllides KenBurns-Videos with text overlay. More is in development.
+Video-Reel creation is available for 2 and 3 slides KenBurns-Videos with text overlay. More is in development.
 
 ## Minimalistic Setup
 
@@ -16,6 +16,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
   - `overlay.js` - Image overlay endpoint
   - `reel.js` - Video reel endpoint
   - `3slidesReel.js` - Video reel endpoint for 3 slides
+  - `storage.js` - local storage endpoint
 - `middleware/` - Middleware directory
   - `auth.js` - API key validation middleware
 - `package.json` - Dependencies and scripts
