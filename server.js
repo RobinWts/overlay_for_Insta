@@ -24,6 +24,7 @@ import { reelHandler } from './endpoints/reel.js';
 import { reel3Handler } from './endpoints/3slidesReel.js';
 import { uploadHandler, deleteHandler } from './endpoints/storage.js';
 import { videoOverlayHandler } from './endpoints/videoOverlay.js';
+import { slideWithAudioHandler } from './endpoints/slideWithAudio.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -228,6 +229,29 @@ app.delete('/store/:id', validateApiKey(config), (req, res) => deleteHandler(req
  */
 app.get('/videoOverlay', validateApiKey(config), (req, res) => videoOverlayHandler(req, res, config));
 
+/**
+ * Slide with Audio endpoint
+ * 
+ * This endpoint creates a video with a single slide image, audio, and optional text overlay.
+ * Uses Ken Burns effect and synchronizes audio with video timing.
+ * 
+ * GET /slideWithAudio?slideID=<filename>&audioID=<filename>&text=<text>&maxlines=<number>
+ * 
+ * Parameters:
+ * - slideID (required): Local filename of image in storage directory
+ * - audioID (required): Local filename of audio in storage directory
+ * - text (optional): Text to overlay on the video
+ * - maxlines (optional): Maximum number of lines for text (default: 5)
+ * 
+ * Returns:
+ * - JSON response with filename and publicURL of the resulting video
+ * - Video duration is audio duration + 1 second (0.5s pause at beginning and end)
+ * - Uses Ken Burns effect for smooth image animation
+ * - Audio starts after 0.5 seconds and ends 0.5 seconds before video end
+ * - Video is stored in the storage directory (same as uploaded files)
+ */
+app.get('/slideWithAudio', validateApiKey(config), (req, res) => slideWithAudioHandler(req, res, config));
+
 // === SERVER STARTUP ===
 
 // Start the Express server and log the port
@@ -250,6 +274,7 @@ app.listen(PORT, () => {
   console.log(`   GET  /healthz - Health check`);
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /videoOverlay - Video text overlay generation`);
+  console.log(`   GET  /slideWithAudio - Slide with audio and text overlay`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
   console.log(`   POST /store/upload - File upload service`);
@@ -259,9 +284,11 @@ app.listen(PORT, () => {
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
   console.log(`📝 Example: http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test&logo=true`);
   console.log(`🎬 Video overlay: http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text`);
+  console.log(`🎵 Slide with audio: http://localhost:${PORT}/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=Test%20Text`);
   if (REQUIRE_API_KEY) {
     console.log(`🔑 With API key: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test"`);
     console.log(`🔑 Video overlay: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text"`);
+    console.log(`🔑 Slide with audio: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=Test%20Text"`);
   }
   console.log('='.repeat(60));
   console.log('📊 Monitoring enabled - all requests will be logged');

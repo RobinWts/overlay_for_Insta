@@ -685,6 +685,123 @@ async function testServerHealth() {
 /**
  * Main test function
  */
+async function testSlideWithAudioEndpoint() {
+    console.log('🎵 Testing slideWithAudio endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid slideWithAudio request with all parameters',
+            params: {
+                slideID: 'test-image.png',
+                audioID: 'test-audio.mp3',
+                text: 'This is a test slide with audio and text overlay that should be displayed at the bottom of the video.',
+                maxlines: 3
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid slideWithAudio request with minimal parameters',
+            params: {
+                slideID: 'test-image.png',
+                audioID: 'test-audio.mp3'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Missing slideID parameter',
+            params: {
+                audioID: 'test-audio.mp3',
+                text: 'This should fail because no slideID is provided'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Missing audioID parameter',
+            params: {
+                slideID: 'test-image.jpg',
+                text: 'This should fail because no audioID is provided'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid maxlines parameter (too high)',
+            params: {
+                slideID: 'test-image.jpg',
+                audioID: 'test-audio.mp3',
+                text: 'Test text',
+                maxlines: 25
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid maxlines parameter (too low)',
+            params: {
+                slideID: 'test-image.jpg',
+                audioID: 'test-audio.mp3',
+                text: 'Test text',
+                maxlines: 0
+            },
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL('/slideWithAudio', BASE_URL);
+
+            // Add parameters
+            Object.entries(testCase.params).forEach(([key, value]) => {
+                url.searchParams.set(key, value);
+            });
+
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                headers: { 'X-API-Key': API_KEY }
+            });
+
+            console.log(`   Status: ${response.status}`);
+            console.log(`   Content-Type: ${response.headers.get('content-type')}`);
+
+            if (testCase.shouldSucceed) {
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`   ✅ Success: ${data.success ? 'true' : 'false'}`);
+                    if (data.publicURL) {
+                        console.log(`   📹 Video URL: ${data.publicURL}`);
+                    }
+                    if (data.filename) {
+                        console.log(`   📁 Filename: ${data.filename}`);
+                    }
+                    if (data.audioDuration) {
+                        console.log(`   ⏱️  Audio Duration: ${data.audioDuration}s`);
+                    }
+                    if (data.totalDuration) {
+                        console.log(`   ⏱️  Total Duration: ${data.totalDuration}s`);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    console.log(`   ❌ Expected success but got error: ${errorData.error}`);
+                }
+            } else {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.log(`   ✅ Expected error and got: ${errorData.error}`);
+                } else {
+                    console.log(`   ❌ Expected error but got success`);
+                }
+            }
+
+        } catch (error) {
+            console.log(`   ❌ Request failed: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
 async function runTests() {
     console.log('🚀 Starting overlay server tests\n');
     console.log('='.repeat(50));
@@ -695,6 +812,7 @@ async function runTests() {
         await testApiKeyValidation();
         await testOverlayEndpoint();
         await testVideoOverlayEndpoint();
+        await testSlideWithAudioEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
         await testStorageUploadEndpoint();
@@ -710,4 +828,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testVideoOverlayEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testVideoOverlayEndpoint, testSlideWithAudioEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };
