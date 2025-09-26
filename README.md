@@ -252,6 +252,7 @@ The server provides multiple endpoints for image processing and reel generation 
 - `GET /healthz` - Health check (no API key required)
 - `GET /overlay` - Image overlay generation
 - `GET /videoOverlay` - Video text overlay generation
+- `GET /slideWithAudio` - Slide with audio and text overlay
 - `GET /2slidesReel` - Two-slide Instagram reel generation
 - `GET /3slidesReel` - Three-slide Instagram reel generation
 - `POST /store/upload` - File upload service (audio/video/image)
@@ -360,6 +361,65 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/videoOverlay?videoID=my
 - Uses same font, stroke, and line break logic as image overlay
 - FFmpeg is required for video processing
 - Supports all video formats accepted by the storage service
+
+#### Slide with Audio Endpoint
+
+```
+GET /slideWithAudio?slideID=<filename>&audioID=<filename>&text=<text>&maxlines=<number>
+```
+
+**Parameters:**
+- `slideID` (required): Local filename of image in storage directory
+- `audioID` (required): Local filename of audio in storage directory
+- `text` (optional): Text to overlay on the video
+- `maxlines` (optional): Maximum number of lines for text (default: 5, range: 1-20)
+
+**Features:**
+- Creates a video with a single slide image, audio, and optional text overlay
+- Uses Ken Burns effect for smooth image animation with zoom and pan
+- Audio is centered with 0.5s pauses at beginning and end
+- Video duration = audio duration + 1 second
+- Text overlay uses the same rendering logic as videoOverlay endpoint
+- Video is stored in the storage directory (same as uploaded files)
+
+**Response:**
+Returns JSON with:
+- `publicURL`: Public URL to access the generated video
+- `filename`: Local filename of the generated video
+- `fileID`: Unique identifier for the video
+- `slideID`: Original slide image filename
+- `audioID`: Original audio filename
+- `text`: Overlay text used (if provided)
+- `maxLines`: Maximum lines setting
+- `audioDuration`: Original audio duration in seconds
+- `totalDuration`: Total video duration in seconds
+- `processingTime`: Processing time in milliseconds
+- `createdAt`: ISO timestamp of creation
+
+**Examples:**
+
+**Basic usage with text:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=This is my slide with audio"
+```
+
+**Without text overlay:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3"
+```
+
+**With custom line limit:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=Long text that will wrap&maxlines=3"
+```
+
+**Notes:**
+- Both slide image and audio must be uploaded first using `/store/upload` endpoint
+- Audio starts after 0.5 seconds and ends 0.5 seconds before video end
+- Uses Ken Burns effect for smooth image animation
+- Text overlay is centered vertically and horizontally
+- FFmpeg is required for video processing
+- Supports all image and audio formats accepted by the storage service
 
 #### Two-Slide Reel Endpoint
 
@@ -556,6 +616,8 @@ overlay_for_Insta/
 ├── endpoints/             # Endpoint handlers
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint
+│   ├── videoOverlay.js    # Video text overlay endpoint
+│   ├── slideWithAudio.js  # Slide with audio and text overlay endpoint
 │   ├── reel.js            # Video reel endpoint
 │   ├── 3slidesReel.js     # Three-slide reel endpoint
 │   └── storage.js         # File storage service endpoints

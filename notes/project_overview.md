@@ -76,6 +76,27 @@ GET /videoOverlay?videoID=<filename>&text=<text>&lines=<number>
 
 **Response**: JSON with publicURL, filename, fileID, and processing metadata
 
+#### Slide with Audio Endpoint
+```
+GET /slideWithAudio?slideID=<filename>&audioID=<filename>&text=<text>&maxlines=<number>
+```
+
+**Parameters**:
+- `slideID` (required): Local filename of image in storage directory
+- `audioID` (required): Local filename of audio in storage directory
+- `text` (optional): Text to overlay on the video
+- `maxlines` (optional): Maximum number of lines for text, default 5
+
+**Features**:
+- Creates a video with a single slide image, audio, and optional text overlay
+- Uses Ken Burns effect for smooth image animation with zoom and pan
+- Audio is centered with 0.5s pauses at beginning and end
+- Video duration = audio duration + 1 second
+- Text overlay uses the same rendering logic as videoOverlay endpoint
+- Video is stored in the storage directory (same as uploaded files)
+
+**Response**: JSON with publicURL, filename, fileID, slideID, audioID, text, maxLines, audioDuration, totalDuration, processingTime, and createdAt
+
 #### Two-Slide Reel Endpoint (Under Development)
 ```
 GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
@@ -178,6 +199,7 @@ overlay_for_Insta/
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint
 │   ├── videoOverlay.js    # Video text overlay endpoint
+│   ├── slideWithAudio.js  # Slide with audio and text overlay endpoint
 │   ├── reel.js            # Video reel endpoint
 │   ├── 3slidesReel.js      # Three-slide reel endpoint
 │   └── storage.js         # File storage service endpoints

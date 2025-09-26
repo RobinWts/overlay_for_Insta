@@ -1,5 +1,52 @@
 # Development History
 
+## 2025-09-26 - Slide with Audio Endpoint Implementation
+
+### New Feature: Slide with Audio and Text Overlay
+- **New Endpoint**: Added `/slideWithAudio` endpoint for creating videos with slide images, audio, and optional text overlay
+- **Ken Burns Effect**: Implements smooth image animation with zoom and pan effects
+- **Audio Synchronization**: Audio is centered with 0.5s pauses at beginning and end
+- **Text Overlay**: Optional text overlay using same rendering logic as videoOverlay endpoint
+- **Storage Integration**: Videos are stored in storage directory alongside uploaded files
+
+### Technical Implementation
+1. **New Endpoint Handler**: `endpoints/slideWithAudio.js`
+   - Parameter validation for slideID, audioID, text, and maxlines
+   - File lookup in storage directory for both slide and audio files
+   - Audio duration detection using FFprobe
+   - Text overlay generation using shared `makeVideoSvg` function
+   - Ken Burns video generation with proper audio timing
+
+2. **Audio Timing Fix**: 
+   - Added `adelay=500|500` filter to center audio with 0.5s pauses
+   - Total video duration = audio duration + 1 second
+   - Audio starts at 0.5s and ends at duration-0.5s
+
+3. **Text Overlay Fix**:
+   - Fixed overlay positioning from `y=810` to `y=(H-h)/2` for proper centering
+   - Text overlay now appears correctly in generated videos
+
+4. **Code Refactoring**:
+   - Moved `makeVideoSvg` function from `videoOverlay.js` to `helpers/image-helper.js`
+   - Updated imports in both `videoOverlay.js` and `slideWithAudio.js`
+   - Centralized text overlay logic for consistency
+
+### Documentation Updates
+- **README.md**: Added comprehensive documentation for `/slideWithAudio` endpoint
+- **Project Overview**: Updated with new endpoint details and file structure
+- **File Structure**: Added `slideWithAudio.js` to endpoints directory
+- **API Examples**: Added curl examples for various use cases
+
+### Testing
+- **Test Suite**: Added comprehensive test cases in `test-server.js`
+- **Parameter Validation**: Tests for missing parameters, invalid values, and edge cases
+- **Success Cases**: Tests for both with and without text overlay scenarios
+
+### Bug Fixes
+1. **Text Overlay Positioning**: Fixed overlay not appearing due to incorrect Y positioning
+2. **Audio Timing**: Fixed audio starting immediately instead of being centered
+3. **Storage Location**: Changed from reels directory to storage directory for consistency
+
 ## 2025-09-26 - Video Overlay Endpoint Implementation
 
 ### New Feature: Video Text Overlay
