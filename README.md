@@ -167,7 +167,7 @@ services:
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
 - 🎬 **Two-Slide Reels**: Generate 1080×1920 videos with Ken Burns and smooth transitions
-- 📁 **File Storage Service**: Upload and manage audio/video files with UUID-based naming
+- 📁 **File Storage Service**: Upload and manage audio, video, and image files with UUID-based naming
 - 🔒 **Secure File Management**: API key protected upload and delete operations
 
 ## Quick Start
@@ -254,7 +254,7 @@ The server provides multiple endpoints for image processing and reel generation 
 - `GET /videoOverlay` - Video text overlay generation
 - `GET /2slidesReel` - Two-slide Instagram reel generation
 - `GET /3slidesReel` - Three-slide Instagram reel generation
-- `POST /store/upload` - File upload service (audio/video)
+- `POST /store/upload` - File upload service (audio/video/image)
 - `DELETE /store/:id` - File deletion service
 - `GET /media/*` - Static media file serving
 
@@ -408,7 +408,7 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=http
 
 #### File Storage Service Endpoints
 
-The server includes a local storage service for managing audio and video files with secure upload and deletion capabilities.
+The server includes a local storage service for managing audio, video, and image files with secure upload and deletion capabilities.
 
 ##### Upload File Endpoint
 
@@ -421,6 +421,7 @@ POST /store/upload
 **Supported File Types:**
 - **Audio**: MP3, WAV, OGG, AAC, M4A, FLAC
 - **Video**: MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime
+- **Image**: JPEG, PNG, GIF, WebP, BMP, TIFF, SVG, AVIF
 
 **File Size Limit:** 100MB
 
@@ -453,6 +454,14 @@ curl -X POST \
 curl -X POST \
   -H "X-API-Key: your-api-key" \
   -F "file=@video.mp4" \
+  http://localhost:8080/store/upload
+```
+
+**Upload image file:**
+```bash
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "file=@image.jpg" \
   http://localhost:8080/store/upload
 ```
 

@@ -194,6 +194,27 @@ async function testStorageUploadEndpoint() {
             shouldSucceed: true
         },
         {
+            name: 'Valid image file upload (JPEG)',
+            fileType: 'image',
+            fileName: 'test-image.jpg',
+            mimeType: 'image/jpeg',
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid image file upload (PNG)',
+            fileType: 'image',
+            fileName: 'test-image.png',
+            mimeType: 'image/png',
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid image file upload (WebP)',
+            fileType: 'image',
+            fileName: 'test-image.webp',
+            mimeType: 'image/webp',
+            shouldSucceed: true
+        },
+        {
             name: 'Invalid file type (text file)',
             fileType: 'text',
             fileName: 'test.txt',

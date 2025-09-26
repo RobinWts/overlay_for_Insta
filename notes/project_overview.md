@@ -109,7 +109,7 @@ POST /store/upload
 
 **Parameters**:
 - Request body: multipart/form-data with 'file' field
-- File types: Audio (MP3, WAV, OGG, AAC, M4A, FLAC) and Video (MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime)
+- File types: Audio (MP3, WAV, OGG, AAC, M4A, FLAC), Video (MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime), and Image (JPEG, PNG, GIF, WebP, BMP, TIFF, SVG, AVIF)
 - File size limit: 100MB
 
 **Response**: JSON with file information including unique ID and public URL

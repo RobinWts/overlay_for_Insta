@@ -2,7 +2,7 @@
  * Storage Service Endpoints
  * 
  * Handles file upload and deletion for local storage service.
- * Supports audio and video files with proper validation and error handling.
+ * Supports audio, video, and image files with proper validation and error handling.
  */
 
 import multer from 'multer';
@@ -37,7 +37,7 @@ const configureMulter = (uploadDir) => {
         }
     });
 
-    // File filter for audio and video files
+    // File filter for audio, video, and image files
     const fileFilter = (req, file, cb) => {
         const allowedMimeTypes = [
             // Audio formats
@@ -56,13 +56,23 @@ const configureMulter = (uploadDir) => {
             'video/flv',
             'video/webm',
             'video/mkv',
-            'video/quicktime'
+            'video/quicktime',
+            // Image formats
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/bmp',
+            'image/tiff',
+            'image/svg+xml',
+            'image/avif'
         ];
 
         if (allowedMimeTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error(`Unsupported file type: ${file.mimetype}. Only audio and video files are allowed.`), false);
+            cb(new Error(`Unsupported file type: ${file.mimetype}. Only audio, video, and image files are allowed.`), false);
         }
     };
 
