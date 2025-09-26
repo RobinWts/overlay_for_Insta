@@ -140,11 +140,14 @@ services:
       - proxy
     labels:
       traefik.enable: "true"
+      # Storage service routing (if desired to expose storage to public)
+      # traefik.http.routers.overlay-storage.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/storage/`)"
       traefik.http.routers.overlay-media.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/reels/`)"
       traefik.http.routers.overlay-media.entrypoints: "websecure"
       traefik.http.routers.overlay-media.tls.certresolver: "le-http"
       traefik.http.services.overlay-media.loadbalancer.server.port: "8080"
       traefik.http.routers.overlay-media.middlewares: "securityHeaders@file"
+
       com.centurylinklabs.watchtower.enable: "false"      
 ```
 
@@ -158,6 +161,8 @@ services:
 - 🐳 **Docker Ready**: Containerized for easy deployment
 - 🔄 **Auto-Reload**: Development mode with file watching
 - 🎬 **Two-Slide Reels**: Generate 1080×1920 videos with Ken Burns and smooth transitions
+- 📁 **File Storage Service**: Upload and manage audio/video files with UUID-based naming
+- 🔒 **Secure File Management**: API key protected upload and delete operations
 
 ## Quick Start
 
@@ -241,6 +246,9 @@ The server provides multiple endpoints for image processing and reel generation 
 - `GET /healthz` - Health check (no API key required)
 - `GET /overlay` - Image overlay generation
 - `GET /2slidesReel` - Two-slide Instagram reel generation
+- `GET /3slidesReel` - Three-slide Instagram reel generation
+- `POST /store/upload` - File upload service (audio/video)
+- `DELETE /store/:id` - File deletion service
 - `GET /media/*` - Static media file serving
 
 **Security**: All endpoints except `/healthz` require a valid API key in the `X-API-Key` header.
@@ -338,6 +346,85 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/2slidesReel?slide1=http
 
 **Response:** Returns a JSON object with the video URL and processing information.
 
+#### File Storage Service Endpoints
+
+The server includes a local storage service for managing audio and video files with secure upload and deletion capabilities.
+
+##### Upload File Endpoint
+
+```
+POST /store/upload
+```
+
+**Request:** multipart/form-data with 'file' field
+
+**Supported File Types:**
+- **Audio**: MP3, WAV, OGG, AAC, M4A, FLAC
+- **Video**: MP4, AVI, MOV, WMV, FLV, WEBM, MKV, QuickTime
+
+**File Size Limit:** 100MB
+
+**Response:**
+```json
+{
+  "success": true,
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "filename": "12345678-1234-1234-1234-123456789abc.mp3",
+  "originalName": "audio-file.mp3",
+  "mimeType": "audio/mpeg",
+  "size": 1024000,
+  "url": "https://localhost:8080/media/storage/12345678-1234-1234-1234-123456789abc.mp3",
+  "uploadTime": "2025-09-25T10:30:00.000Z"
+}
+```
+
+**Examples:**
+
+**Upload audio file:**
+```bash
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "file=@audio.mp3" \
+  http://localhost:8080/store/upload
+```
+
+**Upload video file:**
+```bash
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "file=@video.mp4" \
+  http://localhost:8080/store/upload
+```
+
+##### Delete File Endpoint
+
+```
+DELETE /store/:id
+```
+
+**Parameters:**
+- `id` (required): UUID of the file to delete
+
+**Response:**
+```json
+{
+  "success": true,
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "filename": "12345678-1234-1234-1234-123456789abc.mp3",
+  "size": 1024000,
+  "deletedAt": "2025-09-25T10:35:00.000Z",
+  "message": "File deleted successfully"
+}
+```
+
+**Example:**
+
+```bash
+curl -X DELETE \
+  -H "X-API-Key: your-api-key" \
+  http://localhost:8080/store/12345678-1234-1234-1234-123456789abc
+```
+
 #### Health Check Endpoint
 
 ```
@@ -400,7 +487,9 @@ overlay_for_Insta/
 ├── endpoints/             # Endpoint handlers
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint
-│   └── reel.js            # Video reel endpoint
+│   ├── reel.js            # Video reel endpoint
+│   ├── 3slidesReel.js     # Three-slide reel endpoint
+│   └── storage.js         # File storage service endpoints
 ├── middleware/            # Express middleware
 │   └── auth.js            # API key validation middleware
 ├── test-server.js         # Comprehensive test suite
@@ -413,7 +502,8 @@ overlay_for_Insta/
 ├── env.example           # Environment variables template
 ├── media/                # Media directory (created at runtime)
 │   ├── reels/            # Generated reels storage
-│   └── tmp/              # Temporary files
+│   ├── tmp/              # Temporary files
+│   └── storage/           # File storage service directory
 ├── assets/               # Static assets directory
 │   └── reels_bg/         # Background assets for reels
 └── README.md             # This file
