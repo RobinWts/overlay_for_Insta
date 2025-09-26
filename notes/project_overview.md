@@ -97,6 +97,30 @@ GET /slideWithAudio?slideID=<filename>&audioID=<filename>&text=<text>&maxlines=<
 
 **Response**: JSON with publicURL, filename, fileID, slideID, audioID, text, maxLines, audioDuration, totalDuration, processingTime, and createdAt
 
+#### Create Reel Endpoint
+```
+GET /createReel?videoID=<filename>&video2ID=<filename>&video3ID=<filename>&video4ID=<filename>
+```
+
+**Parameters**:
+- `videoID` (required): Local filename of video in storage directory
+- `video2ID` (optional): Local filename of second video in storage directory
+- `video3ID` (optional): Local filename of third video in storage directory
+- `video4ID` (optional): Local filename of fourth video in storage directory
+
+**Features**:
+- **Single video processing**: If only `videoID` is provided:
+  - If resolution is 1080×1920: copies video to reels directory
+  - If different resolution: resizes to 1080×1920 while maintaining aspect ratio
+- **Multi-video stitching**: If 2-4 videos are provided:
+  - Stitches videos sequentially with 0.5-second fade transitions
+  - Scales all videos to 1080×1920 format if needed
+  - Preserves and transfers audio with crossfade transitions
+  - Uses FFmpeg xfade and acrossfade filters for smooth transitions
+  - Normalizes frame rates, pixel formats, and aspect ratios for compatibility
+
+**Response**: JSON with publicURL, filename, processingTime, videoCount, and fadeDuration
+
 #### Two-Slide Reel Endpoint (Under Development)
 ```
 GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>

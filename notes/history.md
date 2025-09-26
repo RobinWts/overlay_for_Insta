@@ -1,5 +1,59 @@
 # Development History
 
+## 2025-09-26 - Create Reel Endpoint Implementation
+
+### New Feature: Video Reel Creation and Stitching
+- **New Endpoint**: Added `/createReel` endpoint for processing and stitching videos from storage
+- **Single Video Processing**: Copies videos if 1080×1920, resizes if different resolution
+- **Multi-Video Stitching**: Stitches 2-4 videos with 0.5-second fade transitions
+- **Audio Preservation**: Maintains audio with crossfade transitions between videos
+- **Format Normalization**: Automatically scales all videos to 1080×1920 format
+
+### Technical Implementation
+1. **New Endpoint Handler**: `endpoints/createReel.js`
+   - Parameter validation requiring `videoID` as primary parameter
+   - Optional `video2ID`, `video3ID`, `video4ID` for multi-video stitching
+   - File lookup in storage directory for all video files
+   - Video metadata extraction using FFprobe
+   - FFmpeg command construction for single and multi-video processing
+
+2. **Single Video Processing**:
+   - Resolution detection and conditional processing
+   - Direct copy for 1080×1920 videos
+   - Resize with aspect ratio preservation for other resolutions
+   - FFmpeg filters: `scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920`
+
+3. **Multi-Video Stitching**:
+   - Sequential video processing with fade transitions
+   - FFmpeg `xfade` filter for video transitions
+   - FFmpeg `acrossfade` filter for audio crossfades
+   - Format normalization: `fps=30`, `format=yuv420p`, `setsar=1:1`
+   - Support for 2, 3, and 4 video combinations
+
+4. **Error Handling**:
+   - Comprehensive parameter validation
+   - File existence checks
+   - FFmpeg execution error handling
+   - Graceful failure responses
+
+### Documentation Updates
+- **README.md**: Added comprehensive documentation for `/createReel` endpoint
+- **Project Overview**: Updated with new endpoint details and technical features
+- **API Examples**: Added curl examples for single and multi-video scenarios
+- **Response Format**: Documented JSON response structure
+
+### Testing
+- **Test Suite**: Added comprehensive test cases in `test-server.js`
+- **Parameter Validation**: Tests for missing `videoID`, invalid parameters
+- **Success Cases**: Tests for 1, 2, 3, and 4 video scenarios
+- **Error Cases**: Tests for missing files and invalid parameters
+
+### Server Integration
+- **Route Definition**: Added `/createReel` route in `server.js`
+- **Health Check**: Updated `/healthz` endpoint to include new endpoint
+- **Server Logs**: Added endpoint to startup announcements
+- **Example URLs**: Added createReel examples to server startup logs
+
 ## 2025-09-26 - Slide with Audio Endpoint Implementation
 
 ### New Feature: Slide with Audio and Text Overlay

@@ -21,6 +21,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
   - `3slidesReel.js` - Video reel endpoint for 3 slides
   - `storage.js` - local storage endpoint
   - `videoOverlay.js` - Video overlay endpoint
+  - `createReel.js` - Reel creation endpoint
 - `middleware/` - Middleware directory
   - `auth.js` - API key validation middleware
 - `package.json` - Dependencies and scripts
@@ -253,6 +254,7 @@ The server provides multiple endpoints for image processing and reel generation 
 - `GET /overlay` - Image overlay generation
 - `GET /videoOverlay` - Video text overlay generation
 - `GET /slideWithAudio` - Slide with audio and text overlay
+- `GET /createReel` - Video reel creation and stitching
 - `GET /2slidesReel` - Two-slide Instagram reel generation
 - `GET /3slidesReel` - Three-slide Instagram reel generation
 - `POST /store/upload` - File upload service (audio/video/image)
@@ -420,6 +422,70 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/slideWithAudio?slideID=
 - Text overlay is centered vertically and horizontally
 - FFmpeg is required for video processing
 - Supports all image and audio formats accepted by the storage service
+
+#### Create Reel Endpoint
+
+```
+GET /createReel?videoID=<filename>&video2ID=<filename>&video3ID=<filename>&video4ID=<filename>
+```
+
+**Parameters:**
+- `videoID` (required): Local filename of video in storage directory
+- `video2ID` (optional): Local filename of second video in storage directory
+- `video3ID` (optional): Local filename of third video in storage directory
+- `video4ID` (optional): Local filename of fourth video in storage directory
+
+**Functionality:**
+- **Single video**: If only `videoID` is provided:
+  - If resolution is 1080×1920: copies video to reels directory
+  - If different resolution: resizes to 1080×1920 while maintaining aspect ratio
+- **Multiple videos**: If 2-4 videos are provided:
+  - Stitches videos sequentially with 0.5-second fade transitions
+  - Scales all videos to 1080×1920 if needed
+  - Preserves and transfers audio with fade transitions
+  - Places result in reels directory
+
+**Examples:**
+
+**Single video (copy if 1080×1920, resize if different):**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/createReel?videoID=my-video.mp4"
+```
+
+**Two videos with fade transition:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/createReel?videoID=video1.mp4&video2ID=video2.mp4"
+```
+
+**Three videos with fade transitions:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/createReel?videoID=video1.mp4&video2ID=video2.mp4&video3ID=video3.mp4"
+```
+
+**Four videos with fade transitions:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/createReel?videoID=video1.mp4&video2ID=video2.mp4&video3ID=video3.mp4&video4ID=video4.mp4"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "filename": "reel_2025-09-26T14-30-00-000Z_abc123def.mp4",
+  "publicURL": "https://localhost:8080/media/reels/reel_2025-09-26T14-30-00-000Z_abc123def.mp4",
+  "processingTime": 2.5,
+  "videoCount": 2,
+  "fadeDuration": 0.5
+}
+```
+
+**Notes:**
+- All videos must be uploaded first using `/store/upload` endpoint
+- Videos are automatically scaled to 1080×1920 format
+- Fade transitions are 0.5 seconds between videos
+- Audio is preserved and crossfaded between videos
+- FFmpeg is required for video processing
+- Supports all video formats accepted by the storage service
 
 #### Two-Slide Reel Endpoint
 
