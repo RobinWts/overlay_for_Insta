@@ -87,9 +87,6 @@ ensureDirectories();
 // Serve media files statically
 app.use('/media', express.static(MEDIA_DIR, { fallthrough: false }));
 
-// Serve storage files statically (outcomment if NOT desired to expose to public)
-app.use('/media/storage', express.static(path.join(MEDIA_DIR, 'storage'), { fallthrough: false }));
-
 // === ENDPOINT DEFINITIONS ===
 
 /**

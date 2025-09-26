@@ -140,13 +140,12 @@ services:
       - proxy
     labels:
       traefik.enable: "true"
-      # Storage service routing (if desired to expose storage to public)
-      # traefik.http.routers.overlay-storage.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/storage/`)"
-      traefik.http.routers.overlay-media.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/reels/`)"
+      traefik.http.services.overlay-svc.loadbalancer.server.port: "8080"
+      traefik.http.routers.overlay-media.rule: "Host(`${OVERLAY_DOMAIN:-overlay.localhost}`) && PathPrefix(`/media/`)"
       traefik.http.routers.overlay-media.entrypoints: "websecure"
       traefik.http.routers.overlay-media.tls.certresolver: "le-http"
-      traefik.http.services.overlay-media.loadbalancer.server.port: "8080"
       traefik.http.routers.overlay-media.middlewares: "securityHeaders@file"
+      traefik.http.routers.overlay-media.service: "overlay-svc"
 
       com.centurylinklabs.watchtower.enable: "false"      
 ```
