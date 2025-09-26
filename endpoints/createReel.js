@@ -219,7 +219,14 @@ export const createReelHandler = async (req, res, config) => {
     try {
         // === PARAMETER EXTRACTION AND VALIDATION ===
 
-        // Extract video IDs
+        // Extract and validate required videoID parameter
+        const videoID = req.query.videoID;
+        if (!videoID) {
+            console.log(`❌ [${requestId}] Missing required parameter: videoID`);
+            return res.status(400).json({ error: 'videoID is required' });
+        }
+
+        // Extract all video IDs
         const videoIDs = [
             req.query.videoID,
             req.query.video2ID,
