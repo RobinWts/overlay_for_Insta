@@ -1,5 +1,52 @@
 # Development History
 
+## 2025-09-26 - Video Overlay Endpoint Implementation
+
+### New Feature: Video Text Overlay
+- **New Endpoint**: Added `/videoOverlay` endpoint for overlaying text on videos
+- **Video Processing**: Uses FFmpeg to overlay text on videos stored in storage directory
+- **Text Positioning**: Bottom-aligned text with proper padding for Instagram previews
+- **Consistent Typography**: Uses same font, stroke, and line break logic as image overlay
+
+### Technical Implementation
+1. **New Endpoint Handler**: `endpoints/videoOverlay.js`
+   - Parameter validation for videoID, text, and lines
+   - Video file lookup in storage directory
+   - Video metadata extraction using FFprobe
+   - Custom SVG generation with bottom-aligned positioning
+   - FFmpeg video processing with text overlay
+
+2. **Custom Video SVG Function**: `makeVideoSvg()`
+   - Replicates text wrapping and truncation logic from image overlay
+   - Calculates actual number of lines after text processing
+   - Positions text at bottom with 10% padding for Instagram previews
+   - Maintains professional typography with stroke outlines
+
+3. **Server Integration**:
+   - Added endpoint registration in `server.js`
+   - Updated server startup logging to include new endpoint
+   - Added comprehensive test cases in `test-server.js`
+
+### API Specification
+- **Endpoint**: `GET /videoOverlay?videoID=<filename>&text=<text>&lines=<number>`
+- **Parameters**:
+  - `videoID` (required): Filename of video in storage directory
+  - `text` (required): Text to overlay on video
+  - `lines` (optional): Maximum lines for text (default: 5, range: 1-20)
+- **Response**: JSON with publicURL, filename, fileID, and processing metadata
+
+### Documentation Updates
+- **README.md**: Added comprehensive documentation with examples
+- **project_overview.md**: Updated API endpoints and file structure
+- **Test Coverage**: Added test cases for parameter validation and error handling
+
+### Key Features
+- **Instagram-Optimized**: Text positioned at bottom with proper padding
+- **Intelligent Text Wrapping**: Same logic as image overlay with truncation
+- **Video Quality Preservation**: Maintains original video quality and audio
+- **Error Handling**: Comprehensive validation and error responses
+- **API Security**: Protected with same API key validation as other endpoints
+
 ## 2025-09-26 - Helper Module Refactoring
 
 ### Major Improvements

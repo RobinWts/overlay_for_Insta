@@ -324,6 +324,104 @@ async function testStorageDeleteEndpoint() {
 }
 
 /**
+ * Test the videoOverlay endpoint
+ */
+async function testVideoOverlayEndpoint() {
+    console.log('🎬 Testing videoOverlay endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid videoOverlay request with all parameters',
+            params: {
+                videoID: 'test-video.mp4',
+                text: 'This is a test video overlay with some text that should be displayed at the bottom of the video.',
+                lines: 3
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid videoOverlay request with minimal parameters',
+            params: {
+                videoID: 'test-video.mp4',
+                text: 'Short text'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Missing videoID parameter',
+            params: {
+                text: 'This should fail because no videoID is provided'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Missing text parameter',
+            params: {
+                videoID: 'test-video.mp4'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid lines parameter (too high)',
+            params: {
+                videoID: 'test-video.mp4',
+                text: 'Test text',
+                lines: 25
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Invalid lines parameter (too low)',
+            params: {
+                videoID: 'test-video.mp4',
+                text: 'Test text',
+                lines: 0
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Non-existent video file',
+            params: {
+                videoID: 'non-existent-video.mp4',
+                text: 'This should fail because the video does not exist'
+            },
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL('/videoOverlay', BASE_URL);
+            Object.entries(testCase.params).forEach(([key, value]) => {
+                url.searchParams.set(key, value);
+            });
+
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                headers: { 'X-API-Key': API_KEY }
+            });
+
+            const responseData = await response.json();
+
+            if (testCase.shouldSucceed && response.ok) {
+                console.log(`   ✅ Success! Response: ${JSON.stringify(responseData)}`);
+            } else if (!testCase.shouldSucceed && !response.ok) {
+                console.log(`   ✅ Expected error: ${response.status} - ${responseData.error || responseData.message}`);
+            } else {
+                console.log(`   ❌ Unexpected result: ${response.status} - ${JSON.stringify(responseData)}`);
+            }
+        } catch (error) {
+            console.log(`   💥 Exception: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
+/**
  * Test the 3slidesReel endpoint
  */
 async function test3SlidesReelEndpoint() {
@@ -575,6 +673,7 @@ async function runTests() {
     if (isHealthy) {
         await testApiKeyValidation();
         await testOverlayEndpoint();
+        await testVideoOverlayEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
         await testStorageUploadEndpoint();
@@ -590,4 +689,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testVideoOverlayEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };

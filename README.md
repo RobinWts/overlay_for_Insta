@@ -20,6 +20,7 @@ This service can be easily integrated into existing Docker Compose setups by cop
   - `reel.js` - Video reel endpoint
   - `3slidesReel.js` - Video reel endpoint for 3 slides
   - `storage.js` - local storage endpoint
+  - `videoOverlay.js` - Video overlay endpoint
 - `middleware/` - Middleware directory
   - `auth.js` - API key validation middleware
 - `package.json` - Dependencies and scripts
@@ -250,6 +251,7 @@ The server provides multiple endpoints for image processing and reel generation 
 
 - `GET /healthz` - Health check (no API key required)
 - `GET /overlay` - Image overlay generation
+- `GET /videoOverlay` - Video text overlay generation
 - `GET /2slidesReel` - Two-slide Instagram reel generation
 - `GET /3slidesReel` - Three-slide Instagram reel generation
 - `POST /store/upload` - File upload service (audio/video)
@@ -305,6 +307,59 @@ curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://exa
 ```bash
 curl -H "X-API-Key: your-api-key" "http://localhost:8080/overlay?img=https://example.com/image.jpg&title=Custom%20Title&source=@user&w=800&h=600&maxLines=3&logo=true" -o output.jpg
 ```
+
+#### Video Overlay Endpoint
+
+```
+GET /videoOverlay?videoID=<filename>&text=<text>&lines=<number>
+```
+
+**Parameters:**
+- `videoID` (required): Filename of the video in storage directory
+- `text` (required): Text to overlay on the video
+- `lines` (optional): Maximum number of lines for text (default: 5, range: 1-20)
+
+**Features:**
+- Uses the same text rendering logic as the image overlay endpoint
+- Text is positioned at the bottom with proper padding for Instagram previews
+- Supports intelligent text wrapping and truncation with "..." 
+- Professional typography with stroke outlines for readability
+- Preserves original video quality and audio
+
+**Response:**
+Returns JSON with:
+- `publicURL`: Public URL to access the processed video
+- `filename`: Local filename of the processed video
+- `fileID`: Unique identifier for the video
+- `originalVideo`: Original video filename
+- `text`: Overlay text used
+- `lines`: Maximum lines setting
+- `processingTime`: Processing time in milliseconds
+- `createdAt`: ISO timestamp of creation
+
+**Examples:**
+
+**Basic usage:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/videoOverlay?videoID=my-video.mp4&text=This is my overlay text"
+```
+
+**With custom line limit:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/videoOverlay?videoID=my-video.mp4&text=Long text that will wrap to multiple lines&lines=3"
+```
+
+**Single line text:**
+```bash
+curl -H "X-API-Key: your-api-key" "http://localhost:8080/videoOverlay?videoID=my-video.mp4&text=Short text&lines=1"
+```
+
+**Notes:**
+- Video must be uploaded first using `/store/upload` endpoint
+- Text is positioned at the bottom with 10% padding for Instagram previews
+- Uses same font, stroke, and line break logic as image overlay
+- FFmpeg is required for video processing
+- Supports all video formats accepted by the storage service
 
 #### Two-Slide Reel Endpoint
 

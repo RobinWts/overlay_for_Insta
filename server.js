@@ -23,6 +23,7 @@ import { overlayHandler } from './endpoints/overlay.js';
 import { reelHandler } from './endpoints/reel.js';
 import { reel3Handler } from './endpoints/3slidesReel.js';
 import { uploadHandler, deleteHandler } from './endpoints/storage.js';
+import { videoOverlayHandler } from './endpoints/videoOverlay.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -208,6 +209,25 @@ app.post('/store/upload', validateApiKey(config), (req, res) => uploadHandler(re
  */
 app.delete('/store/:id', validateApiKey(config), (req, res) => deleteHandler(req, res, config));
 
+/**
+ * Video overlay endpoint
+ * 
+ * This endpoint overlays text on videos stored in the storage directory
+ * 
+ * GET /videoOverlay?videoID=<filename>&text=<text>&lines=<number>
+ * 
+ * Parameters:
+ * - videoID (required): Filename of the video in storage directory
+ * - text (required): Text to overlay on the video
+ * - lines (optional): Maximum number of lines for text (default: 5)
+ * 
+ * Returns:
+ * - JSON response with publicURL, filename, and fileID
+ * - Uses same text rendering logic as /overlay endpoint
+ * - Text positioned at bottom with padding for Instagram previews
+ */
+app.get('/videoOverlay', validateApiKey(config), (req, res) => videoOverlayHandler(req, res, config));
+
 // === SERVER STARTUP ===
 
 // Start the Express server and log the port
@@ -229,6 +249,7 @@ app.listen(PORT, () => {
   console.log('📋 Available endpoints:');
   console.log(`   GET  /healthz - Health check`);
   console.log(`   GET  /overlay - Image overlay generation`);
+  console.log(`   GET  /videoOverlay - Video text overlay generation`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
   console.log(`   POST /store/upload - File upload service`);
@@ -237,8 +258,10 @@ app.listen(PORT, () => {
   console.log('');
   console.log(`🌐 API endpoint: http://localhost:${PORT}/overlay`);
   console.log(`📝 Example: http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test&logo=true`);
+  console.log(`🎬 Video overlay: http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text`);
   if (REQUIRE_API_KEY) {
     console.log(`🔑 With API key: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test"`);
+    console.log(`🔑 Video overlay: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text"`);
   }
   console.log('='.repeat(60));
   console.log('📊 Monitoring enabled - all requests will be logged');

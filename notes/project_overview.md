@@ -57,6 +57,25 @@ GET /overlay?img=<url>&title=<text>&source=<text>&w=<width>&h=<height>&maxLines=
 
 **Response**: JPEG image with overlay applied
 
+#### Video Overlay Endpoint
+```
+GET /videoOverlay?videoID=<filename>&text=<text>&lines=<number>
+```
+
+**Parameters**:
+- `videoID` (required): Filename of the video in storage directory
+- `text` (required): Text to overlay on the video
+- `lines` (optional): Maximum number of lines for text, default 5
+
+**Features**:
+- Uses the same text rendering logic as the image overlay endpoint
+- Text is positioned at the bottom with proper padding for Instagram previews
+- Supports intelligent text wrapping and truncation with "..."
+- Professional typography with stroke outlines for readability
+- Preserves original video quality and audio
+
+**Response**: JSON with publicURL, filename, fileID, and processing metadata
+
 #### Two-Slide Reel Endpoint (Under Development)
 ```
 GET /2slidesReel?slide1=<url>&slide2=<url>&title1=<text>&title2=<text>&duration1=<seconds>&duration2=<seconds>&transition=<type>
@@ -158,6 +177,7 @@ overlay_for_Insta/
 ├── endpoints/             # Endpoint handlers
 │   ├── health.js          # Health check endpoint
 │   ├── overlay.js         # Image overlay endpoint
+│   ├── videoOverlay.js    # Video text overlay endpoint
 │   ├── reel.js            # Video reel endpoint
 │   ├── 3slidesReel.js      # Three-slide reel endpoint
 │   └── storage.js         # File storage service endpoints
