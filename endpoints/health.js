@@ -15,6 +15,6 @@ export const healthCheck = (req, res) => {
         ok: true,
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        endpoints: ['/overlay', '/videoOverlay', '/slideWithAudio', '/2slidesReel', '/3slidesReel', '/store/upload', '/store/:id', '/healthz']
+        endpoints: ['/overlay', '/videoOverlay', '/slideWithAudio', '/createReel', '/2slidesReel', '/3slidesReel', '/store/upload', '/store/:id', '/healthz']
     });
 };

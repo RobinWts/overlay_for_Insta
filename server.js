@@ -25,6 +25,7 @@ import { reel3Handler } from './endpoints/3slidesReel.js';
 import { uploadHandler, deleteHandler } from './endpoints/storage.js';
 import { videoOverlayHandler } from './endpoints/videoOverlay.js';
 import { slideWithAudioHandler } from './endpoints/slideWithAudio.js';
+import { createReelHandler } from './endpoints/createReel.js';
 
 // Import middleware
 import { validateApiKey } from './middleware/auth.js';
@@ -252,6 +253,29 @@ app.get('/videoOverlay', validateApiKey(config), (req, res) => videoOverlayHandl
  */
 app.get('/slideWithAudio', validateApiKey(config), (req, res) => slideWithAudioHandler(req, res, config));
 
+/**
+ * Create Reel endpoint
+ * 
+ * This endpoint processes videos from storage and creates reels by either:
+ * - Copying/resizing a single video to 1080x1920 format
+ * - Stitching multiple videos together with 0.5s fade transitions
+ * 
+ * GET /createReel?videoID=<filename>&video2ID=<filename>&video3ID=<filename>&video4ID=<filename>
+ * 
+ * Parameters:
+ * - videoID (required): Local filename of video in storage directory
+ * - video2ID (optional): Local filename of second video in storage directory
+ * - video3ID (optional): Local filename of third video in storage directory
+ * - video4ID (optional): Local filename of fourth video in storage directory
+ * 
+ * Returns:
+ * - JSON response with publicURL of the generated video
+ * - Single video: copies if 1080x1920, resizes if different resolution
+ * - Multiple videos: stitches with 0.5s fade transitions and scales to 1080x1920
+ * - Audio is preserved and transferred with fade transitions
+ */
+app.get('/createReel', validateApiKey(config), (req, res) => createReelHandler(req, res, config));
+
 // === SERVER STARTUP ===
 
 // Start the Express server and log the port
@@ -275,6 +299,7 @@ app.listen(PORT, () => {
   console.log(`   GET  /overlay - Image overlay generation`);
   console.log(`   GET  /videoOverlay - Video text overlay generation`);
   console.log(`   GET  /slideWithAudio - Slide with audio and text overlay`);
+  console.log(`   GET  /createReel - Video reel creation and stitching`);
   console.log(`   GET  /2slidesReel - Two-slide reel generation`);
   console.log(`   GET  /3slidesReel - Three-slide reel generation`);
   console.log(`   POST /store/upload - File upload service`);
@@ -285,10 +310,12 @@ app.listen(PORT, () => {
   console.log(`📝 Example: http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test&logo=true`);
   console.log(`🎬 Video overlay: http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text`);
   console.log(`🎵 Slide with audio: http://localhost:${PORT}/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=Test%20Text`);
+  console.log(`🎬 Create reel: http://localhost:${PORT}/createReel?videoID=my-video.mp4&video2ID=my-video2.mp4`);
   if (REQUIRE_API_KEY) {
     console.log(`🔑 With API key: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/overlay?img=https://example.com/image.jpg&title=Test"`);
     console.log(`🔑 Video overlay: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/videoOverlay?videoID=my-video.mp4&text=Test%20Text"`);
     console.log(`🔑 Slide with audio: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/slideWithAudio?slideID=my-image.jpg&audioID=my-audio.mp3&text=Test%20Text"`);
+    console.log(`🔑 Create reel: curl -H "X-API-Key: ${API_KEY}" "http://localhost:${PORT}/createReel?videoID=my-video.mp4&video2ID=my-video2.mp4"`);
   }
   console.log('='.repeat(60));
   console.log('📊 Monitoring enabled - all requests will be logged');

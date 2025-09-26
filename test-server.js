@@ -802,6 +802,121 @@ async function testSlideWithAudioEndpoint() {
     }
 }
 
+/**
+ * Test the createReel endpoint
+ */
+async function testCreateReelEndpoint() {
+    console.log('🎬 Testing createReel endpoint...\n');
+
+    const testCases = [
+        {
+            name: 'Valid createReel request with single video',
+            params: {
+                videoID: 'test-video.mp4'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid createReel request with two videos',
+            params: {
+                videoID: 'test-video.mp4',
+                video2ID: 'test-video2.mp4'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid createReel request with three videos',
+            params: {
+                videoID: 'test-video.mp4',
+                video2ID: 'test-video2.mp4',
+                video3ID: 'test-video3.mp4'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Valid createReel request with four videos',
+            params: {
+                videoID: 'test-video.mp4',
+                video2ID: 'test-video2.mp4',
+                video3ID: 'test-video3.mp4',
+                video4ID: 'test-video4.mp4'
+            },
+            shouldSucceed: true
+        },
+        {
+            name: 'Missing videoID parameter',
+            params: {
+                video2ID: 'test-video2.mp4'
+            },
+            shouldSucceed: false
+        },
+        {
+            name: 'Empty parameters',
+            params: {},
+            shouldSucceed: false
+        }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`📋 ${testCase.name}`);
+
+        try {
+            const url = new URL('/createReel', BASE_URL);
+
+            // Add parameters
+            Object.entries(testCase.params).forEach(([key, value]) => {
+                url.searchParams.set(key, value);
+            });
+
+            console.log(`   URL: ${url.toString()}`);
+
+            const response = await fetch(url.toString(), {
+                headers: { 'X-API-Key': API_KEY }
+            });
+
+            console.log(`   Status: ${response.status}`);
+            console.log(`   Content-Type: ${response.headers.get('content-type')}`);
+
+            if (testCase.shouldSucceed) {
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`   ✅ Success: ${data.success ? 'true' : 'false'}`);
+                    if (data.publicURL) {
+                        console.log(`   📹 Video URL: ${data.publicURL}`);
+                    }
+                    if (data.filename) {
+                        console.log(`   📁 Filename: ${data.filename}`);
+                    }
+                    if (data.videoCount) {
+                        console.log(`   🎬 Video Count: ${data.videoCount}`);
+                    }
+                    if (data.videoIDs) {
+                        console.log(`   🎥 Video IDs: ${data.videoIDs.join(', ')}`);
+                    }
+                    if (data.processingTime) {
+                        console.log(`   ⏱️  Processing Time: ${data.processingTime}ms`);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    console.log(`   ❌ Expected success but got error: ${errorData.error}`);
+                }
+            } else {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.log(`   ✅ Expected error and got: ${errorData.error}`);
+                } else {
+                    console.log(`   ❌ Expected error but got success`);
+                }
+            }
+
+        } catch (error) {
+            console.log(`   ❌ Request failed: ${error.message}`);
+        }
+
+        console.log('');
+    }
+}
+
 async function runTests() {
     console.log('🚀 Starting overlay server tests\n');
     console.log('='.repeat(50));
@@ -813,6 +928,7 @@ async function runTests() {
         await testOverlayEndpoint();
         await testVideoOverlayEndpoint();
         await testSlideWithAudioEndpoint();
+        await testCreateReelEndpoint();
         await test2SlidesReelEndpoint();
         await test3SlidesReelEndpoint();
         await testStorageUploadEndpoint();
@@ -828,4 +944,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     runTests().catch(console.error);
 }
 
-export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testVideoOverlayEndpoint, testSlideWithAudioEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };
+export { testApiKeyValidation, test2SlidesReelEndpoint, test3SlidesReelEndpoint, testOverlayEndpoint, testVideoOverlayEndpoint, testSlideWithAudioEndpoint, testCreateReelEndpoint, testStorageUploadEndpoint, testStorageDeleteEndpoint, testServerHealth, runTests };
