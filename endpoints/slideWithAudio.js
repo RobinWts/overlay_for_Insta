@@ -297,6 +297,17 @@ export const slideWithAudioHandler = async (req, res, config) => {
         const totalTime = Date.now() - startTime;
         console.log(`🎉 [${requestId}] Request completed successfully (total: ${totalTime}ms)`);
 
+        // Clean up temporary files
+        const tempDir = path.join(config.TMP_DIR, requestId);
+        try {
+            if (fs.existsSync(tempDir)) {
+                console.log(`🧹 [${requestId}] Cleaning up temporary files...`);
+                await fsp.rm(tempDir, { recursive: true });
+            }
+        } catch (cleanupError) {
+            console.warn(`⚠️ [${requestId}] Cleanup warning:`, cleanupError.message);
+        }
+
         // Return success response
         res.status(200).json({
             success: true,
@@ -317,6 +328,18 @@ export const slideWithAudioHandler = async (req, res, config) => {
         // Handle any errors gracefully
         const totalTime = Date.now() - startTime;
         console.log(`💥 [${requestId}] Request failed after ${totalTime}ms:`, error.message);
+
+        // Clean up temporary files on error
+        const tempDir = path.join(config.TMP_DIR, requestId);
+        try {
+            if (fs.existsSync(tempDir)) {
+                console.log(`🧹 [${requestId}] Cleaning up temporary files after error...`);
+                await fsp.rm(tempDir, { recursive: true });
+            }
+        } catch (cleanupError) {
+            console.warn(`⚠️ [${requestId}] Cleanup warning after error:`, cleanupError.message);
+        }
+
         res.status(500).json({ error: String(error) });
     }
 };

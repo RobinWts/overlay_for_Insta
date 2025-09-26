@@ -231,6 +231,18 @@ export const videoOverlayHandler = async (req, res, config) => {
         // Handle any errors gracefully
         const totalTime = Date.now() - startTime;
         console.log(`💥 [${requestId}] Request failed after ${totalTime}ms:`, error.message);
+
+        // Clean up temporary files on error
+        const tempDir = path.join(config.TMP_DIR, requestId);
+        try {
+            if (fs.existsSync(tempDir)) {
+                console.log(`🧹 [${requestId}] Cleaning up temporary files after error...`);
+                await fsp.rm(tempDir, { recursive: true });
+            }
+        } catch (cleanupError) {
+            console.warn(`⚠️ [${requestId}] Cleanup warning after error:`, cleanupError.message);
+        }
+
         res.status(500).json({ error: String(error) });
     }
 };
