@@ -128,19 +128,33 @@ const processMultipleVideos = async (inputPaths, outputPath, requestId) => {
     const fadeDuration = 0.5; // 0.5 seconds fade
 
     // Scale all videos to 1080x1920 and normalize frame rates first
-    // Also trim audio to account for overlapping fade durations
+    // Apply audio fades to match video transitions
     for (let i = 0; i < inputPaths.length; i++) {
         filterComplex += `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p,setsar=1:1[v${i}];`;
 
-        // Trim audio: all clips except the last one should be shortened by fadeDuration
-        if (i < inputPaths.length - 1) {
-            // Trim fadeDuration from the end of this audio clip
-            const trimEnd = metadata[i].duration - fadeDuration;
-            filterComplex += `[${i}:a]atrim=end=${trimEnd},asetpts=PTS-STARTPTS[a${i}];`;
-        } else {
-            // Last audio clip: no trimming needed
-            filterComplex += `[${i}:a]volume=1.0[a${i}];`;
+        // Audio fades: fade out at end of each clip (except last), fade in at start (except first)
+        let audioFilter = `[${i}:a]`;
+
+        // First clip: only fade out at end
+        if (i === 0 && inputPaths.length > 1) {
+            const fadeOutStart = metadata[i].duration - fadeDuration;
+            audioFilter += `afade=t=out:st=${fadeOutStart}:d=${fadeDuration}`;
         }
+        // Middle clips: fade in at start and fade out at end
+        else if (i > 0 && i < inputPaths.length - 1) {
+            const fadeOutStart = metadata[i].duration - fadeDuration;
+            audioFilter += `afade=t=in:st=0:d=${fadeDuration},afade=t=out:st=${fadeOutStart}:d=${fadeDuration}`;
+        }
+        // Last clip: only fade in at start
+        else if (i === inputPaths.length - 1 && i > 0) {
+            audioFilter += `afade=t=in:st=0:d=${fadeDuration}`;
+        }
+        // Single clip: no fades
+        else {
+            audioFilter += `volume=1.0`;
+        }
+
+        filterComplex += `${audioFilter}[a${i}];`;
     }
 
     // Create fade transitions between videos
@@ -151,8 +165,8 @@ const processMultipleVideos = async (inputPaths, outputPath, requestId) => {
         // Video xfade
         filterComplex += `[v0][v1]xfade=transition=fade:duration=${fadeDuration}:offset=${offset1}[vout];`;
 
-        // Audio: concat trimmed audio streams
-        filterComplex += `[a0][a1]concat=n=2:v=0:a=1[aout]`;
+        // Audio: use amix to overlay the faded audio streams
+        filterComplex += `[a0][a1]amix=inputs=2:duration=longest[aout]`;
     } else if (inputPaths.length === 3) {
         // Three videos: create overlapping segments for fade transitions
         const offset1 = Math.max(0, metadata[0].duration - fadeDuration);
@@ -162,8 +176,12 @@ const processMultipleVideos = async (inputPaths, outputPath, requestId) => {
         filterComplex += `[v0][v1]xfade=transition=fade:duration=${fadeDuration}:offset=${offset1}[v01];`;
         filterComplex += `[v01][v2]xfade=transition=fade:duration=${fadeDuration}:offset=${offset2}[vout];`;
 
-        // Audio: concat trimmed audio streams
-        filterComplex += `[a0][a1][a2]concat=n=3:v=0:a=1[aout]`;
+        // Audio: delay streams and mix with faded audio
+        const delay1 = (metadata[0].duration - fadeDuration) * 1000;
+        const delay2 = (metadata[0].duration + metadata[1].duration - 2 * fadeDuration) * 1000;
+        filterComplex += `[a1]adelay=${delay1}|${delay1}[a1d];`;
+        filterComplex += `[a2]adelay=${delay2}|${delay2}[a2d];`;
+        filterComplex += `[a0][a1d][a2d]amix=inputs=3:duration=longest[aout]`;
     } else if (inputPaths.length === 4) {
         // Four videos: create overlapping segments for fade transitions
         const offset1 = Math.max(0, metadata[0].duration - fadeDuration);
@@ -175,8 +193,14 @@ const processMultipleVideos = async (inputPaths, outputPath, requestId) => {
         filterComplex += `[v01][v2]xfade=transition=fade:duration=${fadeDuration}:offset=${offset2}[v012];`;
         filterComplex += `[v012][v3]xfade=transition=fade:duration=${fadeDuration}:offset=${offset3}[vout];`;
 
-        // Audio: concat trimmed audio streams
-        filterComplex += `[a0][a1][a2][a3]concat=n=4:v=0:a=1[aout]`;
+        // Audio: delay streams and mix with faded audio
+        const delay1 = (metadata[0].duration - fadeDuration) * 1000;
+        const delay2 = (metadata[0].duration + metadata[1].duration - 2 * fadeDuration) * 1000;
+        const delay3 = (metadata[0].duration + metadata[1].duration + metadata[2].duration - 3 * fadeDuration) * 1000;
+        filterComplex += `[a1]adelay=${delay1}|${delay1}[a1d];`;
+        filterComplex += `[a2]adelay=${delay2}|${delay2}[a2d];`;
+        filterComplex += `[a3]adelay=${delay3}|${delay3}[a3d];`;
+        filterComplex += `[a0][a1d][a2d][a3d]amix=inputs=4:duration=longest[aout]`;
     }
 
     // Calculate total duration
